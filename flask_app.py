@@ -8,10 +8,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from users import Users
-from issues import Issues
+from issues import Issues, issue_change
 from comment_branch import CommentBranch
-from labels import Labels
-from labels_task_link import LabelsTaskLink
+from labels import Labels, labels_change
+from labels_task_link import LabelsTaskLink, delete_link
 
 from sql_requests import get_all_objs, add_composed_obj, select_by_field
 from base import Base
@@ -73,18 +73,8 @@ def index():
                     )
                     add_composed_obj(Session, new_issue)
                 else:
-                    if 'labels' in request.json["changes"].keys():
-                        lbl_list = ''
-
-                        for lbl in request.json["changes"]["labels"]["current"]:
-                            lbl_list += lbl["title"] + ", "
-
-                        lbl_list = lbl_list[:-2]
-                        bot.send_message(secret_var["telegram_id"],
-                        "Были изменены лейблы в issue - " +
-                        request.json["object_attributes"]["url"] +
-                        "\nАкутальные лейблы - " + lbl_list
-                        )
+                    labels_change(bot, request, secret_var)
+                    issue_change(bot, request, secret_var)
 
                 for lbl in request.json["labels"]:
                     new_label = Labels(
@@ -98,6 +88,8 @@ def index():
                         labelId = lbl["id"]
                     )
                     add_composed_obj(Session, new_label_task_link)
+
+                delete_link(request.json["object_attributes"]["id"], request.json["labels"], Session)
 
             if request.json["event_type"] == 'note':
                 bot.send_message(secret_var["telegram_id"], "Новый комментарий в - " + request.json["object_attributes"]["url"])

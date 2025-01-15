@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy import BigInteger, Column, Index
+from sqlalchemy import BigInteger, Column, Index, select
 
 from base import Base
 
@@ -15,3 +15,30 @@ class LabelsTaskLink(Base):
 
 	def __repr__(self) -> str:
 			return f"LabelsTaskLink(id={self.id}, issueId={self.issueId}, labelId={self.labelId}"
+
+def delete_link(issue_id, labels, Session):
+    gitlab_labels = []
+    for l in labels:
+        gitlab_labels.append(l["id"])
+
+    with Session() as session:
+        try:
+            statement = select(LabelsTaskLink).where(LabelsTaskLink.issueId == issue_id)
+            links_in_db = session.scalars(statement).all()
+        except:
+            pass
+
+    for el in links_in_db:
+        if el.labelId not in gitlab_labels:
+            try:
+                with Session() as session:
+                    try:
+                        obj=session.query(LabelsTaskLink).filter(LabelsTaskLink.issueId==issue_id and LabelsTaskLink.labelId==el.labelId).first()
+                        session.delete(obj)
+                    except:
+                        session.rollback()
+                    else:
+                        session.commit()
+            except:
+                pass
+
