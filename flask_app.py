@@ -8,10 +8,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from users import Users
-from issues import Issues, issue_change
-from comment_branch import CommentBranch
-from labels import Labels, labels_change
-from labels_task_link import LabelsTaskLink, delete_link
+from issues import Issues, issue_change, create_new_issue
+from comment_branch import CommentBranch, create_new_commentbranch
+from labels import Labels, labels_change, create_new_label
+from labels_task_link import LabelsTaskLink, delete_link, create_new_labeltasklink
 
 from sql_requests import get_all_objs, add_composed_obj, select_by_field
 from base import Base
@@ -61,57 +61,24 @@ def index():
             if request.json["event_type"] == 'issue':
                 res = select_by_field(Session(), Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
                 if len(res) == 0:
-                    bot.send_message(secret_var["telegram_id"], "Новый issue - " + request.json["object_attributes"]["url"])
-                    new_issue = Issues(
-                        title = request.json["object_attributes"]["title"],
-                        description = request.json["object_attributes"]["description"],
-                        url = request.json["object_attributes"]["url"],
-                        issueId = int(request.json["object_attributes"]["id"]),
-                        issueIid = int(request.json["object_attributes"]["iid"]),
-                        authorId = int(request.json["object_attributes"]["author_id"]),
-                        isClosed = int(request.json["object_attributes"]["state"] != 'opened')
-                    )
-                    add_composed_obj(Session, new_issue)
+                    bot.send_message(secret_var["telegram_id"], "Новая issue - " + request.json["object_attributes"]["url"])
+                    create_new_issue(request, Session)
                 else:
                     labels_change(bot, request, secret_var)
                     issue_change(bot, request, secret_var)
 
-                for lbl in request.json["labels"]:
-                    new_label = Labels(
-                        name = lbl["title"],
-                        labelId = lbl["id"]
-                    )
-                    add_composed_obj(Session, new_label)
-
-                    new_label_task_link = LabelsTaskLink(
-                        issueId = request.json["object_attributes"]["id"],
-                        labelId = lbl["id"]
-                    )
-                    add_composed_obj(Session, new_label_task_link)
+                create_new_label(request, Session)
+                create_new_labeltasklink(request, Session)
 
                 delete_link(request.json["object_attributes"]["id"], request.json["labels"], Session)
 
             if request.json["event_type"] == 'note':
                 bot.send_message(secret_var["telegram_id"], "Новый комментарий в - " + request.json["object_attributes"]["url"])
 
-                new_branch = CommentBranch(
-                    discussionId=request.json["object_attributes"]["discussion_id"],
-                    userId=int(request.json["object_attributes"]["author_id"])
-                )
-                add_composed_obj(Session, new_branch)
+                create_new_commentbranch(request, Session)
+                create_new_label(request, Session)
+                create_new_labeltasklink(request, Session)
 
-                for lbl in request.json["issue"]["labels"]:
-                    new_label = Labels(
-                        name = lbl["title"],
-                        labelId = lbl["id"]
-                    )
-                    add_composed_obj(Session, new_label)
-
-                    new_label_task_link = LabelsTaskLink(
-                        issueId = request.json["issue"]["id"],
-                        labelId = lbl["id"]
-                    )
-                    add_composed_obj(Session, new_label_task_link)
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
     return 'ok', 200

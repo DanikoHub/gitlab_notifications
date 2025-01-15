@@ -3,6 +3,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import BigInteger, Column, Index, select
 
 from base import Base
+from sql_requests import add_composed_obj
 
 class LabelsTaskLink(Base):
 	__tablename__ = "labels_task_link"
@@ -15,6 +16,14 @@ class LabelsTaskLink(Base):
 
 	def __repr__(self) -> str:
 			return f"LabelsTaskLink(id={self.id}, issueId={self.issueId}, labelId={self.labelId}"
+
+def create_new_labeltasklink(request, Session):
+    for lbl in request.json["labels"]:
+        new_label_task_link = LabelsTaskLink(
+            issueId = request.json["object_attributes"]["id"],
+            labelId = lbl["id"]
+        )
+        add_composed_obj(Session, new_label_task_link)
 
 def delete_link(issue_id, labels, Session):
     gitlab_labels = []

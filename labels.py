@@ -2,6 +2,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger, Column
 
+from sql_requests import add_composed_obj
 from base import Base
 
 class Labels(Base):
@@ -13,6 +14,14 @@ class Labels(Base):
 
 	def __repr__(self) -> str:
 			return f"Labels(id={self.id}, name={self.name}, labelId={self.labelId}"
+
+def create_new_label(request, Session):
+    for lbl in request.json["labels"]:
+        new_label = Labels(
+            name = lbl["title"],
+            labelId = lbl["id"]
+        )
+        add_composed_obj(Session, new_label)
 
 def labels_change(bot, request, secret_var):
     if 'labels' in request.json["changes"].keys():
