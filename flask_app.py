@@ -14,6 +14,7 @@ from labels import Labels, labels_change, create_new_label
 from labels_task_link import LabelsTaskLink, delete_link, create_new_labeltasklink
 
 from sql_requests import get_all_objs, add_composed_obj, select_by_field
+from fetch_users_from_gitlab import fetch_users
 from base import Base
 
 # -------------Настройка бота------------
@@ -101,6 +102,7 @@ def get_client_id(m):
     except Exception as e:
         bot.send_message(secret_var["telegram_id"], e)
 
+# -------------Технические функции, не будут использоваться позже--------------
 def get_all(m, Classname):
     with Session() as session:
         try:
@@ -128,6 +130,14 @@ def get_labels(m):
 @bot.message_handler(commands=['get_all_links'])
 def get_links(m):
     get_all(m, LabelsTaskLink)
+
+@bot.message_handler(commands=['fetch_users'])
+def get_fetched_users(m):
+    r = fetch_users()
+    res_id = ''
+    for i in r["users"]["nodes"]:
+        res_id += i["id"] + '\n'
+    bot.send_message(secret_var["telegram_id"], res_id)
 
 @bot.message_handler(commands=['backup'])
 def backup(m):
