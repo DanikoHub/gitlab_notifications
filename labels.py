@@ -23,7 +23,7 @@ def create_new_label(request, Session):
         )
         add_composed_obj(Session, new_label)
 
-def labels_change(bot, request, secret_var):
+def labels_change(bot, request, users_to_send):
     if 'labels' in request.json["changes"].keys():
         lbl_list = ''
 
@@ -31,11 +31,12 @@ def labels_change(bot, request, secret_var):
             lbl_list += lbl["title"] + ", "
 
         lbl_list = lbl_list[:-2]
-        bot.send_message(secret_var["telegram_id"],
-        "Были изменены лейблы в issue - " +
-        request.json["object_attributes"]["url"] +
-        "\nАкутальные лейблы - " + lbl_list
-        )
+        for u in users_to_send:
+            bot.send_message(u,
+            "Были изменены лейблы в issue - " +
+            request.json["object_attributes"]["url"] +
+            "\nАкутальные лейблы - " + lbl_list
+            )
 
 
 

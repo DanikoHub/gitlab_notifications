@@ -59,30 +59,39 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
+            users_to_send = get_users_for_notification(request)
             if request.json["event_type"] == 'issue':
                 res = select_by_field(Session(), Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
                 if len(res) == 0:
-                    bot.send_message(secret_var["telegram_id"], "Новая issue - " + request.json["object_attributes"]["url"])
+                    for u in users_to_send:
+                        bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
                     create_new_issue(request, Session)
                 else:
-                    labels_change(bot, request, secret_var)
-                    issue_change(bot, request, secret_var)
+                    labels_change(bot, request, users_to_send)
+                    issue_change(bot, request, users_to_send)
 
                 create_new_label(request, Session)
                 create_new_labeltasklink(request, Session)
-
                 delete_link(request.json["object_attributes"]["id"], request.json["labels"], Session)
 
             if request.json["event_type"] == 'note':
                 bot.send_message(secret_var["telegram_id"], "Новый комментарий в - " + request.json["object_attributes"]["url"])
 
                 create_new_commentbranch(request, Session)
-                create_new_label(request, Session)
-                create_new_labeltasklink(request, Session)
 
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
     return 'ok', 200
+
+def get_users_for_notification(request):
+    users_to_send = set()
+    if request.json["event_type"] == 'issue':
+        author = select_by_field(Session(), Users, Users.gitlabId, int(request.json["object_attributes"]["author_id"]))
+        users_to_send.add(author[0].telegramId)
+        for a in request.json["object_attributes"]["assignee_ids"]:
+            assignee = select_by_field(Session(), Users, Users.gitlabId, int(a))
+            users_to_send.add(assignee[0].telegramId)
+    return users_to_send
 
 # ---------------Команды Бота-----------------
 

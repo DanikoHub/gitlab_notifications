@@ -34,9 +34,10 @@ def create_new_issue(request, Session):
     add_composed_obj(Session, new_issue)
     return new_issue
 
-def issue_change(bot, request, secret_var):
+def issue_change(bot, request, users_to_send):
     if 'description' in request.json["changes"].keys():
-        bot.send_message("Изменено описание в issue - " + request.json["object_attributes"]["url"])
+        for u in users_to_send:
+            bot.send_message(u, "Изменено описание в issue - " + request.json["object_attributes"]["url"])
 
 
 
