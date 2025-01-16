@@ -59,8 +59,8 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
-            users_to_send = get_users_for_notification(request)
             if request.json["event_type"] == 'issue':
+                users_to_send = get_users_for_notification(request)
                 res = select_by_field(Session(), Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
                 if len(res) == 0:
                     for u in users_to_send:
@@ -75,9 +75,11 @@ def index():
                 delete_link(request.json["object_attributes"]["id"], request.json["labels"], Session)
 
             if request.json["event_type"] == 'note':
-                bot.send_message(secret_var["telegram_id"], "Новый комментарий в - " + request.json["object_attributes"]["url"])
-
                 create_new_commentbranch(request, Session)
+                users_to_send = get_users_for_notification(request)
+                for u in users_to_send:
+                    bot.send_message(u, "Новый комментарий в - " + request.json["object_attributes"]["url"])
+
 
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
@@ -85,19 +87,32 @@ def index():
 
 def get_users_for_notification(request):
     users_to_send = set()
+    initiator_giltab_id = int(request.json["user"]["id"])
+
     if request.json["event_type"] == 'issue':
         author = select_by_field(Session(), Users, Users.gitlabId, int(request.json["object_attributes"]["author_id"]))
+
         users_to_send.add(author[0].telegramId)
         for a in request.json["object_attributes"]["assignee_ids"]:
             assignee = select_by_field(Session(), Users, Users.gitlabId, int(a))
             users_to_send.add(assignee[0].telegramId)
+
+    if request.json["event_type"] == 'note':
+        try:
+            branches = select_by_field(Session(), CommentBranch, CommentBranch.discussionId, request.json["object_attributes"]["discussion_id"])
+            for b in branches:
+                if b.userGitlabId != initiator_giltab_id:
+                    branch_participant = select_by_field(Session(), Users, Users.gitlabId, b.userGitlabId)
+                    users_to_send.add(branch_participant[0].telegramId)
+        except Exception as e:
+            bot.send_message(secret_var["telegram_id"], "Error = " + str(e))
     return users_to_send
 
 # ---------------Команды Бота-----------------
 
 @bot.message_handler(commands=['start'])
 def start_func(m):
-    bot.send_message(secret_var["telegram_id"], 'Отправьте ваш ClientId')
+    bot.send_message(m.chat.id, 'Отправьте ваш ClientId')
     next_step = partial(get_client_id)
     bot.register_next_step_handler(m, next_step)
 
@@ -106,7 +121,7 @@ def get_client_id(m):
     telegram_id = m.chat.id
     gitlab_id = m.text
     try:
-        new_user = Users(name="new_user", telegramId=int(telegram_id), gitlabId=int(gitlab_id))
+        new_user = Users(name="new_user", gitlabUsername = "@username", telegramId=int(telegram_id), gitlabId=int(gitlab_id))
         add_composed_obj(Session, new_user)
     except Exception as e:
         bot.send_message(secret_var["telegram_id"], e)

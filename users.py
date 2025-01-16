@@ -9,11 +9,12 @@ class Users(Base):
 
 	id: Mapped[int] = mapped_column(primary_key=True)
 	name: Mapped[str] = mapped_column(String(30))
+	gitlabUsername: Mapped[str] = mapped_column(String(30))
 	telegramId: Mapped[int] = Column(BigInteger, unique = True)
 	gitlabId: Mapped[int] = Column(BigInteger)
 
 	def __repr__(self) -> str:
-			return f"Users(id={self.id}, name={self.name}, telegramId={self.telegramId}, gitlabId={self.gitlabId})"
+			return f"Users(id={self.id}, name={self.name}, telegramId={self.telegramId}, gitlabId={self.gitlabId}, gitlabUsername={self.gitlabUsername})"
 
 
 
