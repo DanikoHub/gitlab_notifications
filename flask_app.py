@@ -3,6 +3,7 @@ import telebot
 from functools import partial
 import os
 import json
+import re
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
@@ -67,6 +68,10 @@ def index():
                         bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
                     create_new_issue(request, Session)
                 else:
+                    if 'assignees' in request.json["changes"].keys():
+                        for u in users_to_send:
+                            bot.send_message(u, "Изменены ответсвенные в issue - " + request.json["object_attributes"]["url"])
+
                     labels_change(bot, request, users_to_send)
                     issue_change(bot, request, users_to_send)
 
@@ -99,8 +104,15 @@ def get_users_for_notification(request):
 
     if request.json["event_type"] == 'note':
         try:
-            branches = select_by_field(Session(), CommentBranch, CommentBranch.discussionId, request.json["object_attributes"]["discussion_id"])
-            for b in branches:
+            comment = request.json["object_attributes"]["description"]
+            mentions = re.findall(r"@\w+", comment)
+
+            for m in mentions:
+                user_mentioned = select_by_field(Session(), Users, Users.gitlabUsername, m)
+                users_to_send.add(user_mentioned[0].telegramId)
+
+            branche_comments = select_by_field(Session(), CommentBranch, CommentBranch.discussionId, request.json["object_attributes"]["discussion_id"])
+            for b in branche_comments:
                 if b.userGitlabId != initiator_giltab_id:
                     branch_participant = select_by_field(Session(), Users, Users.gitlabId, b.userGitlabId)
                     users_to_send.add(branch_participant[0].telegramId)
