@@ -39,5 +39,10 @@ def issue_change(bot, request, users_to_send):
         for u in users_to_send:
             bot.send_message(u, "Изменено описание в issue - " + request.json["object_attributes"]["url"])
 
+    if 'assignees' in request.json["changes"].keys():
+        for u in users_to_send:
+            bot.send_message(u, "Изменены ответственные в issue - " + request.json["object_attributes"]["url"])
+
+
 
 

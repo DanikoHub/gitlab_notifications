@@ -3,10 +3,10 @@ import telebot
 from functools import partial
 import os
 import json
-import re
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 
 from users import Users
 from issues import Issues, issue_change, create_new_issue
@@ -14,7 +14,8 @@ from comment_branch import CommentBranch, create_new_commentbranch
 from labels import Labels, labels_change, create_new_label
 from labels_task_link import LabelsTaskLink, delete_link, create_new_labeltasklink
 
-from sql_requests import get_all_objs, add_composed_obj, select_by_field
+from sql_requests import select_all, add_composed_obj, select_by_field
+from notifications import get_users_for_notification
 from fetch_users_from_gitlab import fetch_users
 from base import Base
 
@@ -41,7 +42,7 @@ def index_bot():
 
 # -----------Подключение к БД----------------
 
-engine = create_engine(secret_var["mysql_url"])
+engine = create_engine(secret_var["mysql_url"], poolclass=NullPool)
 Session = sessionmaker(engine)
 
 def create_db_and_tables() -> None:
@@ -61,17 +62,13 @@ def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
             if request.json["event_type"] == 'issue':
-                users_to_send = get_users_for_notification(request)
+                users_to_send = get_users_for_notification(request, Session, bot)
                 res = select_by_field(Session(), Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
                 if len(res) == 0:
                     for u in users_to_send:
                         bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
                     create_new_issue(request, Session)
                 else:
-                    if 'assignees' in request.json["changes"].keys():
-                        for u in users_to_send:
-                            bot.send_message(u, "Изменены ответсвенные в issue - " + request.json["object_attributes"]["url"])
-
                     labels_change(bot, request, users_to_send)
                     issue_change(bot, request, users_to_send)
 
@@ -81,7 +78,7 @@ def index():
 
             if request.json["event_type"] == 'note':
                 create_new_commentbranch(request, Session)
-                users_to_send = get_users_for_notification(request)
+                users_to_send = get_users_for_notification(request, Session, bot)
                 for u in users_to_send:
                     bot.send_message(u, "Новый комментарий в - " + request.json["object_attributes"]["url"])
 
@@ -89,36 +86,6 @@ def index():
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
     return 'ok', 200
-
-def get_users_for_notification(request):
-    users_to_send = set()
-    initiator_giltab_id = int(request.json["user"]["id"])
-
-    if request.json["event_type"] == 'issue':
-        author = select_by_field(Session(), Users, Users.gitlabId, int(request.json["object_attributes"]["author_id"]))
-
-        users_to_send.add(author[0].telegramId)
-        for a in request.json["object_attributes"]["assignee_ids"]:
-            assignee = select_by_field(Session(), Users, Users.gitlabId, int(a))
-            users_to_send.add(assignee[0].telegramId)
-
-    if request.json["event_type"] == 'note':
-        try:
-            comment = request.json["object_attributes"]["description"]
-            mentions = re.findall(r"@\w+", comment)
-
-            for m in mentions:
-                user_mentioned = select_by_field(Session(), Users, Users.gitlabUsername, m)
-                users_to_send.add(user_mentioned[0].telegramId)
-
-            branche_comments = select_by_field(Session(), CommentBranch, CommentBranch.discussionId, request.json["object_attributes"]["discussion_id"])
-            for b in branche_comments:
-                if b.userGitlabId != initiator_giltab_id:
-                    branch_participant = select_by_field(Session(), Users, Users.gitlabId, b.userGitlabId)
-                    users_to_send.add(branch_participant[0].telegramId)
-        except Exception as e:
-            bot.send_message(secret_var["telegram_id"], "Error = " + str(e))
-    return users_to_send
 
 # ---------------Команды Бота-----------------
 
@@ -142,7 +109,7 @@ def get_client_id(m):
 def get_all(m, Classname):
     with Session() as session:
         try:
-            res = get_all_objs(session, Classname)
+            res = select_all(session, Classname)
             bot.send_message(secret_var["telegram_id"], str(res))
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)

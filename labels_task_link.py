@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import BigInteger, Column, Index, select
 
 from base import Base
-from sql_requests import add_composed_obj
+from sql_requests import add_composed_obj, select_by_field
 
 class LabelsTaskLink(Base):
 	__tablename__ = "labels_task_link"
@@ -19,6 +19,7 @@ class LabelsTaskLink(Base):
 
 def create_new_labeltasklink(request, Session):
     for lbl in request.json["labels"]:
+        # select_by_field(Session(), LabelsTaskLink, LabelsTaskLink., value)
         new_label_task_link = LabelsTaskLink(
             issueId = request.json["object_attributes"]["id"],
             labelId = lbl["id"]
@@ -50,4 +51,6 @@ def delete_link(issue_id, labels, Session):
                         session.commit()
             except:
                 pass
+
+
 
