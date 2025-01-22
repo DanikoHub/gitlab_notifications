@@ -2,6 +2,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger, Column
 
+from sql_requests import create_obj
 from base import Base
 
 class Users(Base):
@@ -16,6 +17,12 @@ class Users(Base):
 	def __repr__(self) -> str:
 			return f"Users(id={self.id}, name={self.name}, telegramId={self.telegramId}, gitlabId={self.gitlabId}, gitlabUsername={self.gitlabUsername})"
 
-
+def create_new_user(Session, request, telegram_id, gitlab_id):
+    new_user = Users(
+        name="new_user",
+        gitlabUsername = "@username",
+        telegramId=int(telegram_id),
+        gitlabId=int(gitlab_id))
+    create_obj(Session, new_user, Users, {'telegramId' : int(telegram_id)})
 
 

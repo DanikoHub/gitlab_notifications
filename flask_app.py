@@ -8,14 +8,14 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from users import Users
-from issues import Issues, issue_change, create_new_issue
+from users import Users, create_new_user
+from issues import Issues, create_new_issue
 from comment_branch import CommentBranch, create_new_commentbranch
-from labels import Labels, labels_change, create_new_label
-from labels_task_link import LabelsTaskLink, delete_link, create_new_labeltasklink
+from labels import Labels, create_new_label
+from labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
 
-from sql_requests import select_all, add_composed_obj, select_by_field
-from notifications import get_users_for_notification
+from sql_requests import select_all
+from notifications import get_users_for_notification, issue_change, labels_change, new_comment
 from fetch_users_from_gitlab import fetch_users
 from base import Base
 
@@ -61,26 +61,26 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
-            if request.json["event_type"] == 'issue':
-                users_to_send = get_users_for_notification(request, Session, bot)
-                res = select_by_field(Session(), Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
-                if len(res) == 0:
-                    for u in users_to_send:
-                        bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
-                    create_new_issue(request, Session)
-                else:
-                    labels_change(bot, request, users_to_send)
-                    issue_change(bot, request, users_to_send)
+            create_new_issue(Session, request, bot)
+            create_new_label(Session, request, bot)
+            create_new_labeltasklink(Session, request, bot)
 
-                create_new_label(request, Session)
-                create_new_labeltasklink(request, Session)
-                delete_link(request.json["object_attributes"]["id"], request.json["labels"], Session)
+            if request.json["event_type"] == 'issue':
+
+                users_to_send = get_users_for_notification(Session, request, bot)
+
+                labels_change(bot, request, users_to_send)
+                issue_change(bot, request, users_to_send)
+
+                delete_labeltasklink(Session, request, bot)
 
             if request.json["event_type"] == 'note':
-                create_new_commentbranch(request, Session)
-                users_to_send = get_users_for_notification(request, Session, bot)
-                for u in users_to_send:
-                    bot.send_message(u, "Новый комментарий в - " + request.json["object_attributes"]["url"])
+
+                create_new_commentbranch(Session, request)
+
+                users_to_send = get_users_for_notification(Session, request, bot)
+
+                new_comment(bot, request, users_to_send)
 
 
         except Exception as e:
@@ -91,28 +91,20 @@ def index():
 
 @bot.message_handler(commands=['start'])
 def start_func(m):
-    bot.send_message(m.chat.id, 'Отправьте ваш ClientId')
+    bot.send_message(m.chat.id, 'Отправьте ваш UserId')
     next_step = partial(get_client_id)
     bot.register_next_step_handler(m, next_step)
 
 def get_client_id(m):
-    bot.send_message(secret_var["telegram_id"], str(m.chat.id))
-    telegram_id = m.chat.id
-    gitlab_id = m.text
     try:
-        new_user = Users(name="new_user", gitlabUsername = "@username", telegramId=int(telegram_id), gitlabId=int(gitlab_id))
-        add_composed_obj(Session, new_user)
+        create_new_user(Session, request, m.chat.id, m.text)
     except Exception as e:
         bot.send_message(secret_var["telegram_id"], e)
 
 # -------------Технические функции, не будут использоваться позже--------------
 def get_all(m, Classname):
-    with Session() as session:
-        try:
-            res = select_all(session, Classname)
-            bot.send_message(secret_var["telegram_id"], str(res))
-        except Exception as e:
-            bot.send_message(secret_var["telegram_id"], e)
+    res = select_all(Session, Classname)
+    bot.send_message(secret_var["telegram_id"], str(res))
 
 @bot.message_handler(commands=['get_all_users'])
 def get_users(m):

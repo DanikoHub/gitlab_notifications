@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy import BigInteger, Column, Index, select
+from sqlalchemy import BigInteger, Column, Index
+import json
 
 from base import Base
-from sql_requests import add_composed_obj, select_by_field
+from sql_requests import create_obj, select_by_field, select_filtered_rows
 
 class LabelsTaskLink(Base):
 	__tablename__ = "labels_task_link"
@@ -15,42 +16,56 @@ class LabelsTaskLink(Base):
 	__table_args__ = (Index('idx_taskId_labelId', 'issueId', 'labelId', unique=True),)
 
 	def __repr__(self) -> str:
-			return f"LabelsTaskLink(id={self.id}, issueId={self.issueId}, labelId={self.labelId}"
+			return f"LabelsTaskLink(id={self.id}, issueId={self.issueId}, labelId={self.labelId})"
 
-def create_new_labeltasklink(request, Session):
-    for lbl in request.json["labels"]:
-        # select_by_field(Session(), LabelsTaskLink, LabelsTaskLink., value)
+def create_new_labeltasklink(Session, request, bot = None):
+    if request.json["event_type"] == 'issue':
+        labels = request.json["labels"]
+        obj_attr = 'object_attributes'
+    else:
+        labels = request.json["issue"]["labels"]
+        obj_attr = 'issue'
+
+    for lbl in labels:
         new_label_task_link = LabelsTaskLink(
-            issueId = request.json["object_attributes"]["id"],
-            labelId = lbl["id"]
+            issueId = int(request.json[obj_attr]["id"]),
+            labelId = int(lbl["id"])
         )
-        add_composed_obj(Session, new_label_task_link)
+        create_obj(Session,
+            new_label_task_link,
+            LabelsTaskLink,
+            {'issueId' : int(request.json[obj_attr]["id"]), 'labelId' : int(lbl["id"])}, bot = bot)
 
-def delete_link(issue_id, labels, Session):
-    gitlab_labels = []
-    for l in labels:
-        gitlab_labels.append(l["id"])
+with open('./mysite/secret_var.json', 'r') as file:
+    secret_var = json.load(file)
 
-    with Session() as session:
-        try:
-            statement = select(LabelsTaskLink).where(LabelsTaskLink.issueId == issue_id)
-            links_in_db = session.scalars(statement).all()
-        except:
-            pass
+def delete_labeltasklink(Session, request, bot):
+    if 'labels' in request.json["changes"].keys():
+        labels = request.json["labels"]
+        links_in_db = select_by_field(Session, LabelsTaskLink, LabelsTaskLink.issueId, int(request.json["object_attributes"]["id"]), LabelsTaskLink.labelId)
 
-    for el in links_in_db:
-        if el.labelId not in gitlab_labels:
-            try:
-                with Session() as session:
-                    try:
-                        obj=session.query(LabelsTaskLink).filter(LabelsTaskLink.issueId==issue_id and LabelsTaskLink.labelId==el.labelId).first()
-                        session.delete(obj)
-                    except:
-                        session.rollback()
-                    else:
-                        session.commit()
-            except:
-                pass
+        gitlab_labels = []
+        if labels is not None:
+            for l in  labels:
+                gitlab_labels.append(l["id"])
+
+
+        if links_in_db is None:
+            return
+
+        for lbl_id in links_in_db:
+            if lbl_id in gitlab_labels:
+                continue
+
+            with Session() as session:
+                try:
+                    obj = select_filtered_rows(Session, LabelsTaskLink, {'issueId' : int(request.json["object_attributes"]["id"]), 'labelId' : int(lbl_id)})
+                    if len(obj) != 0:
+                        session.delete(obj[0])
+                except:
+                    session.rollback()
+                else:
+                    session.commit()
 
 
 
