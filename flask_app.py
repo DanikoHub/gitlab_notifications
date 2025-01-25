@@ -8,16 +8,16 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from users import Users, create_new_user
-from issues import Issues, create_new_issue
-from comment_branch import CommentBranch, create_new_commentbranch
-from labels import Labels, create_new_label
-from labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
+from mysite.tables.users import Users, create_new_user
+from mysite.tables.issues import Issues, create_new_issue
+from mysite.tables.comment_branch import CommentBranch, create_new_commentbranch
+from mysite.tables.labels import Labels, create_new_label
+from mysite.tables.labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
 
 from sql_requests import select_all
 from notifications import get_users_for_notification, issue_change, labels_change, new_comment
 from fetch_users_from_gitlab import fetch_users
-from base import Base
+from mysite.tables.base import Base
 
 # -------------Настройка бота------------
 
@@ -86,7 +86,7 @@ def index():
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
     return 'ok', 200
-
+bot.send_message(secret_var["telegram_id"], "test")
 # ---------------Команды Бота-----------------
 
 @bot.message_handler(commands=['start'])

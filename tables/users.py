@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger, Column
 
 from sql_requests import create_obj
-from base import Base
+from mysite.tables.base import Base
 
 class Users(Base):
 	__tablename__ = "users"

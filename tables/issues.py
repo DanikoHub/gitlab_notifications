@@ -2,7 +2,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger
 
-from base import Base
+from mysite.tables.base import Base
 from sql_requests import create_obj
 
 class Issues(Base):

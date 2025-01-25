@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, Index
 
 from sql_requests import create_obj
-from base import Base
+from mysite.tables.base import Base
 
 class CommentBranch(Base):
 	__tablename__ = "comment_branch"

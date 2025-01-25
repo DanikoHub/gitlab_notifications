@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import BigInteger, Column, Index
 import json
 
-from base import Base
+from mysite.tables.base import Base
 from sql_requests import create_obj, select_by_field, select_filtered_rows
 
 class LabelsTaskLink(Base):

@@ -4,8 +4,8 @@ import json
 with open('./mysite/secret_var.json', 'r') as file:
     secret_var = json.load(file)
 
-from users import Users
-from comment_branch import CommentBranch
+from mysite.tables.users import Users
+from mysite.tables.comment_branch import CommentBranch
 
 from sql_requests import select_by_field, select_all_from_list
 
@@ -49,8 +49,6 @@ def get_users_for_notification(Session, request, bot = None):
         author = select_by_field(Session, Users, Users.gitlabId, int(request.json["object_attributes"]["author_id"]))
 
         if author is not None:
-            if bot is not None:
-                bot.send_message(secret_var["telegram_id"], author)
             users_to_send.add(author[0].telegramId)
 
         if request.json["object_attributes"]["assignee_ids"] is not None:
