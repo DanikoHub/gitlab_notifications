@@ -2,8 +2,8 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger, Column
 
-from sql_requests import create_obj
-from mysite.tables.base import Base
+from mysite.src.sql_requests import create_obj
+from mysite.src.tables.base import Base
 
 class Users(Base):
 	__tablename__ = "users"

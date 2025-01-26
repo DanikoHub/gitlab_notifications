@@ -2,8 +2,8 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger
 
-from mysite.tables.base import Base
-from sql_requests import create_obj
+from mysite.src.tables.base import Base
+from mysite.src.sql_requests import create_obj
 
 class Issues(Base):
 	__tablename__ = "issues"
@@ -34,7 +34,7 @@ def create_new_issue(Session, request, bot = None):
         issueId = int(request.json[obj_attr]["id"]),
         issueIid = int(request.json[obj_attr]["iid"]),
         authorId = int(request.json[obj_attr]["author_id"]),
-        isClosed = int(request.json[obj_attr]["state"] != 'opened')
+        isClosed = int(request.json[obj_attr]["state_id"])
     )
     create_obj(Session, new_issue, Issues, {'issueId' : int(request.json[obj_attr]["id"])}, bot)
     return new_issue

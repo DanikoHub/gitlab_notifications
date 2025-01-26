@@ -4,27 +4,54 @@ import json
 with open('./mysite/secret_var.json', 'r') as file:
     secret_var = json.load(file)
 
-from mysite.tables.users import Users
-from mysite.tables.comment_branch import CommentBranch
+from mysite.src.tables.users import Users
+from mysite.src.tables.issues import Issues
+from mysite.src.tables.comment_branch import CommentBranch
 
-from sql_requests import select_by_field, select_all_from_list
+from mysite.src.sql_requests import select_by_field, select_all_from_list
 
 def new_comment(bot, request, users_to_send):
     for u in users_to_send:
         bot.send_message(u, "Новый комментарий в - " + request.json["object_attributes"]["url"])
 
-def issue_change(bot, request, users_to_send):
-    if 'id' in request.json["changes"].keys():
-        for u in users_to_send:
-            bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
+def issue_change(Session, bot, request, users_to_send):
+	if request.json["event_type"] == 'issue':
 
-    elif 'description' in request.json["changes"].keys():
-        for u in users_to_send:
-            bot.send_message(u, "Изменено описание в issue - " + request.json["object_attributes"]["url"])
+		issue = select_by_field(Session, Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
 
-    elif 'assignees' in request.json["changes"].keys():
-        for u in users_to_send:
-            bot.send_message(u, "Изменены ответственные в issue - " + request.json["object_attributes"]["url"])
+		if 'id' in request.json["changes"].keys():
+			for u in users_to_send:
+				bot.send_message(u, "Новая issue - " + request.json["object_attributes"]["url"])
+
+		elif 'description' in request.json["changes"].keys():
+			for u in users_to_send:
+				bot.send_message(u, "Изменено описание в issue - " + request.json["object_attributes"]["url"])
+
+		elif 'assignees' in request.json["changes"].keys():
+			for u in users_to_send:
+				bot.send_message(u, "Изменены ответственные в issue - " + request.json["object_attributes"]["url"])
+
+		elif 'state_id' in request.json["changes"].keys():
+			if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
+
+				with Session() as session:
+					try:
+						issue_to_update = session.query(Issues).filter(Issues.issueId == int(request.json["object_attributes"]["id"]))
+						issue_to_update.update({'isClosed' : int(request.json["changes"]["state_id"]["current"])})
+					except Exception as e:
+						session.rollback()
+						if bot is not None:
+							bot.send_message(secret_var["telegram_id"], 'not43 ' + str(e))
+					else:
+						session.commit()
+
+				if request.json["changes"]["state_id"]["current"] == 1:
+					for u in users_to_send:
+						bot.send_message(u, "Issue была переоткрыта - " + request.json["object_attributes"]["url"])
+
+				if request.json["changes"]["state_id"]["current"] == 2:
+					for u in users_to_send:
+						bot.send_message(u, "Issue была закрыта - " + request.json["object_attributes"]["url"])
 
 def labels_change(bot, request, users_to_send):
     if 'labels' in request.json["changes"].keys() and users_to_send is not None:

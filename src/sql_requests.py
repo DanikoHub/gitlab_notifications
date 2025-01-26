@@ -22,8 +22,18 @@ def create_obj(Session, composed_obj, class_name = None, filter_ = None, bot = N
         if bot is not None:
             bot.send_message(secret_var["telegram_id"], 'sql22 ' + str(e))
 
-def update_obj(new_object, session) -> None:
-	session.merge(new_object)
+# def update_obj(Session, class_name, update_obj, class_update_field, update_value, bot = None):
+# 	with Session() as session:
+# 		try:
+# 			session.query(class_name).filter(class_field == search_value).update(new_value)
+# 		except Exception as e:
+# 			session.rollback()
+# 			if bot is not None:
+# 			    bot.send_message(secret_var["telegram_id"], 'sql32 ' + str(e))
+# 		else:
+# 			session.commit()
+# 			if bot is not None:
+# 			    bot.send_message(secret_var["telegram_id"], 'commited')
 
 def select_all(Session, class_name, return_field = None):
     if return_field is None:

@@ -2,8 +2,8 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, Index
 
-from sql_requests import create_obj
-from mysite.tables.base import Base
+from mysite.src.sql_requests import create_obj
+from mysite.src.tables.base import Base
 
 class CommentBranch(Base):
 	__tablename__ = "comment_branch"

@@ -8,16 +8,16 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from mysite.tables.users import Users, create_new_user
-from mysite.tables.issues import Issues, create_new_issue
-from mysite.tables.comment_branch import CommentBranch, create_new_commentbranch
-from mysite.tables.labels import Labels, create_new_label
-from mysite.tables.labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
+from mysite.src.tables.users import Users, create_new_user
+from mysite.src.tables.issues import Issues, create_new_issue
+from mysite.src.tables.comment_branch import CommentBranch, create_new_commentbranch
+from mysite.src.tables.labels import Labels, create_new_label
+from mysite.src.tables.labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
 
-from sql_requests import select_all
-from notifications import get_users_for_notification, issue_change, labels_change, new_comment
-from fetch_users_from_gitlab import fetch_users
-from mysite.tables.base import Base
+from mysite.src.sql_requests import select_all
+from mysite.src.notifications import get_users_for_notification, issue_change, labels_change, new_comment
+from mysite.src.fetch_users_from_gitlab import fetch_users
+from mysite.src.tables.base import Base
 
 # -------------Настройка бота------------
 
@@ -70,7 +70,7 @@ def index():
                 users_to_send = get_users_for_notification(Session, request, bot)
 
                 labels_change(bot, request, users_to_send)
-                issue_change(bot, request, users_to_send)
+                issue_change(Session, bot, request, users_to_send)
 
                 delete_labeltasklink(Session, request, bot)
 
