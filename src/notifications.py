@@ -24,29 +24,33 @@ def issue_change_notify(Session, request, bot):
 
 	if request.json["event_type"] == 'issue' and users_to_send is not None:
 
-		issue = select_by_field(Session, Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
+		obj_attrs = request.json["object_attributes"]
 
-		if 'id' in request.json["changes"].keys():
-			send_to_users(bot, users_to_send, "Новая issue - " + request.json["object_attributes"]["url"])
+		issue = select_by_field(Session, Issues, Issues.issueId, int(obj_attrs["id"]))
 
-		elif 'description' in request.json["changes"].keys():
-			send_to_users(bot, users_to_send, "Изменено описание в issue - " + request.json["object_attributes"]["url"])
+		match request.json["changes"]:
 
-		elif 'assignees' in request.json["changes"].keys():
-			send_to_users(bot, users_to_send, "Изменены ответственные в issue - " + request.json["object_attributes"]["url"])
+			case {'id' : id}:
+				send_to_users(bot, users_to_send, "Новая issue - " + obj_attrs["url"])
 
-		elif 'state_id' in request.json["changes"].keys():
-			try:
-				update_obj(Session, Issues, Issues.issueId, int(request.json["object_attributes"]["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
+			case {'description' : description}:
+				send_to_users(bot, users_to_send, "Изменено описание в issue - " + obj_attrs["url"])
 
-				if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
-					send_to_users(bot, users_to_send, "Issue была переоткрыта - " + request.json["object_attributes"]["url"] \
-					if request.json["changes"]["state_id"]["current"] == 1 \
-					else "Issue была закрыта - " + request.json["object_attributes"]["url"])
+			case {'assignees' : assignees}:
+				send_to_users(bot, users_to_send, "Изменены ответственные в issue - " + obj_attrs["url"])
 
-			except Exception as e:
-				if bot is not None:
-					bot.send_message(secret_var["telegram_id"], 'not44 ' + str(e))
+			case {'state_id' : state_id}:
+				try:
+					update_obj(Session, Issues, Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
+
+					if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
+						send_to_users(bot, users_to_send, "Issue была переоткрыта - " + obj_attrs["url"] \
+						if request.json["changes"]["state_id"]["current"] == 1 \
+						else "Issue была закрыта - " + request.json["object_attributes"]["url"])
+
+				except Exception as e:
+					if bot is not None:
+						bot.send_message(secret_var["telegram_id"], 'not44 ' + str(e))
 
 
 def labels_change_notify(Session, request, bot):
@@ -54,9 +58,8 @@ def labels_change_notify(Session, request, bot):
 
 	if 'labels' in request.json["changes"].keys() and users_to_send is not None:
 
-		lbl_list = ', '.join([lbl["title"] for lbl in request.json["changes"]["labels"]["current"]])
-
-		send_to_users(bot, users_to_send, "Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + "\nАкутальные лейблы - " + lbl_list)
+		send_to_users(bot, users_to_send, "Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + \
+		"\nАкутальные лейблы - " + ', '.join([lbl["title"] for lbl in request.json["changes"]["labels"]["current"]]))
 
 
 def get_users_for_notification(Session, request, bot = None):
@@ -79,8 +82,6 @@ def get_users_for_notification(Session, request, bot = None):
 
 			if assignees is not None:
 				users_to_send.update(assignees)
-
-
 
 	if request.json["event_type"] == 'note':
 		try:
