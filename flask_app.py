@@ -85,8 +85,10 @@ def index():
 
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
+
     return 'ok', 200
-bot.send_message(secret_var["telegram_id"], "test")
+
+bot.send_message(secret_var["telegram_id"], "Бот запущен")
 # ---------------Команды Бота-----------------
 
 @bot.message_handler(commands=['start'])

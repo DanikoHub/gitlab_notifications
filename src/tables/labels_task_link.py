@@ -16,7 +16,7 @@ class LabelsTaskLink(Base):
 	__table_args__ = (Index('idx_taskId_labelId', 'issueId', 'labelId', unique=True),)
 
 	def __repr__(self) -> str:
-			return f"LabelsTaskLink(id={self.id}, issueId={self.issueId}, labelId={self.labelId})"
+			return f"LabelsTaskLink(id={self.id},\n\tissueId={self.issueId},\n\tlabelId={self.labelId})\n\n"
 
 def create_new_labeltasklink(Session, request, bot = None):
     if request.json["event_type"] == 'issue':

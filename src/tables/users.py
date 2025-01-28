@@ -15,7 +15,7 @@ class Users(Base):
 	gitlabId: Mapped[int] = Column(BigInteger)
 
 	def __repr__(self) -> str:
-			return f"Users(id={self.id}, name={self.name}, telegramId={self.telegramId}, gitlabId={self.gitlabId}, gitlabUsername={self.gitlabUsername})"
+			return f"Users(id={self.id},\n\tname={self.name},\n\ttelegramId={self.telegramId},\n\tgitlabId={self.gitlabId},\n\tgitlabUsername={self.gitlabUsername})\n\n"
 
 def create_new_user(Session, request, telegram_id, gitlab_id):
     new_user = Users(

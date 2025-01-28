@@ -19,7 +19,7 @@ class Issues(Base):
 
 
 	def __repr__(self) -> str:
-			return f"Issues(id={self.id}, title={self.title}, description={self.description}, url={self.url} issueIid={self.issueIid} issueId={self.issueId} authorId={self.authorId} isClosed={self.isClosed})"
+			return f"Issues(id={self.id}\n\ttitle={self.title}\n\tdescription={self.description}\n\turl={self.url}\n\tissueIid={self.issueIid}\n\tissueId={self.issueId}\n\tauthorId={self.authorId}\n\tisClosed={self.isClosed})\n\n"
 
 def create_new_issue(Session, request, bot = None):
     if request.json["event_type"] == 'issue':

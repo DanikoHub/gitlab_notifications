@@ -13,7 +13,7 @@ class Labels(Base):
 	labelId: Mapped[int] = Column(BigInteger, unique = True)
 
 	def __repr__(self) -> str:
-			return f"Labels(id={self.id}, name={self.name}, labelId={self.labelId})"
+			return f"Labels(id={self.id},\n\tname={self.name},\n\tlabelId={self.labelId})\n\n"
 
 def create_new_label(Session, request, bot = None):
     if request.json["event_type"] == 'issue':

@@ -15,7 +15,7 @@ class CommentBranch(Base):
 	__table_args__ = (Index('idx_discussionId_userId', 'discussionId', 'userGitlabId', unique=True),)
 
 	def __repr__(self) -> str:
-			return f"CommentBranch(id={self.id}, discussionId={self.discussionId}, userGitlabId={self.userGitlabId}"
+			return f"CommentBranch(id={self.id},\n\tdiscussionId={self.discussionId},\n\tuserGitlabId={self.userGitlabId})\n\n"
 
 def create_new_commentbranch(Session, request):
     new_branch = CommentBranch(
