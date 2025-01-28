@@ -14,11 +14,15 @@ def send_to_users(bot, users_to_send, text):
 	send = lambda user, text : bot.send_message(user, text)
 	[send(u, text) for u in users_to_send]
 
-def new_comment(bot, request, users_to_send):
-	send_to_users(bot, users_to_send, "Новый комментарий в - " + request.json["object_attributes"]["url"])
+def new_comment_notify(Session, request, bot):
+	users_to_send = get_users_for_notification(Session, request, bot)
+	send_to_users(bot, users_to_send, "Новый комментарий в issue - " + request.json["object_attributes"]["url"])
 
-def issue_change(Session, bot, request, users_to_send):
-	if request.json["event_type"] == 'issue':
+def issue_change_notify(Session, request, bot):
+
+	users_to_send = get_users_for_notification(Session, request, bot)
+
+	if request.json["event_type"] == 'issue' and users_to_send is not None:
 
 		issue = select_by_field(Session, Issues, Issues.issueId, int(request.json["object_attributes"]["id"]))
 
@@ -45,15 +49,15 @@ def issue_change(Session, bot, request, users_to_send):
 					bot.send_message(secret_var["telegram_id"], 'not44 ' + str(e))
 
 
-def labels_change(bot, request, users_to_send):
+def labels_change_notify(Session, request, bot):
+	users_to_send = get_users_for_notification(Session, request, bot)
+
 	if 'labels' in request.json["changes"].keys() and users_to_send is not None:
-		lbl_list = ''
 
-		for lbl in request.json["changes"]["labels"]["current"]:
-			lbl_list += lbl["title"] + ", "
+		lbl_list = ', '.join([lbl["title"] for lbl in request.json["changes"]["labels"]["current"]])
 
-		lbl_list = lbl_list[:-2]
 		send_to_users(bot, users_to_send, "Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + "\nАкутальные лейблы - " + lbl_list)
+
 
 def get_users_for_notification(Session, request, bot = None):
 	users_to_send = set()

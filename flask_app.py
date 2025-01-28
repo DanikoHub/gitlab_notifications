@@ -15,7 +15,7 @@ from mysite.src.tables.labels import Labels, create_new_label
 from mysite.src.tables.labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
 
 from mysite.src.sql_requests import select_all
-from mysite.src.notifications import get_users_for_notification, issue_change, labels_change, new_comment
+from mysite.src.notifications import issue_change_notify, labels_change_notify, new_comment_notify
 from mysite.src.fetch_users_from_gitlab import fetch_users
 from mysite.src.tables.base import Base
 
@@ -67,10 +67,8 @@ def index():
 
             if request.json["event_type"] == 'issue':
 
-                users_to_send = get_users_for_notification(Session, request, bot)
-
-                labels_change(bot, request, users_to_send)
-                issue_change(Session, bot, request, users_to_send)
+                labels_change_notify(Session, request, bot)
+                issue_change_notify(Session, request, bot)
 
                 delete_labeltasklink(Session, request, bot)
 
@@ -78,10 +76,7 @@ def index():
 
                 create_new_commentbranch(Session, request)
 
-                users_to_send = get_users_for_notification(Session, request, bot)
-
-                new_comment(bot, request, users_to_send)
-
+                new_comment_notify(Session, request, bot)
 
         except Exception as e:
             bot.send_message(secret_var["telegram_id"], e)
