@@ -1,23 +1,22 @@
 from flask import Flask, request
 import telebot
 from functools import partial
-import os
 import json
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from mysite.src.tables.users import Users, create_new_user
-from mysite.src.tables.issues import Issues, create_new_issue
-from mysite.src.tables.comment_branch import CommentBranch, create_new_commentbranch
-from mysite.src.tables.labels import Labels, create_new_label
-from mysite.src.tables.labels_task_link import LabelsTaskLink, create_new_labeltasklink, delete_labeltasklink
-
-from mysite.src.sql_requests import select_all
-from mysite.src.notifications import issue_change_notify, labels_change_notify, new_comment_notify
-from mysite.src.fetch_users_from_gitlab import fetch_users
+from mysite.src.tables.users import create_new_user
+from mysite.src.tables.issues import create_new_issue
+from mysite.src.tables.comment_branch import create_new_commentbranch
+from mysite.src.tables.labels import create_new_label
+from mysite.src.tables.labels_task_link import create_new_labeltasklink, delete_labeltasklink
 from mysite.src.tables.base import Base
+
+from mysite.src.debug_tools import send_e
+from mysite.src.tables_show import setup_handlers
+from mysite.src.notifications import issue_change_notify, labels_change_notify, new_comment_notify
 
 # -------------Настройка бота------------
 
@@ -51,7 +50,7 @@ def create_db_and_tables() -> None:
 try:
     create_db_and_tables()
 except Exception as e:
-     bot.send_message(secret_var["telegram_id"], e)
+     send_e(bot, e, line = 'flask52 ')
 
 # --------------Обработка запроса из Gitlab---------------
 
@@ -79,12 +78,12 @@ def index():
                 new_comment_notify(Session, request, bot)
 
         except Exception as e:
-            bot.send_message(secret_var["telegram_id"], e)
+            send_e(bot, e, line = 'flask80 ')
 
     return 'ok', 200
 
-bot.send_message(secret_var["telegram_id"], "Бот запущен")
 # ---------------Команды Бота-----------------
+bot.send_message(secret_var["telegram_id"], "Бот запущен")
 
 @bot.message_handler(commands=['start'])
 def start_func(m):
@@ -96,56 +95,11 @@ def get_client_id(m):
     try:
         create_new_user(Session, request, m.chat.id, m.text)
     except Exception as e:
-        bot.send_message(secret_var["telegram_id"], e)
+        send_e(bot, e, line = 'flask97 ')
 
 # -------------Технические функции, не будут использоваться позже--------------
-def get_all(m, Classname):
-    res = select_all(Session, Classname)
-    bot.send_message(secret_var["telegram_id"], str(res))
+setup_handlers(Session, bot)
 
-@bot.message_handler(commands=['get_all_users'])
-def get_users(m):
-    get_all(m, Users)
-
-@bot.message_handler(commands=['get_all_issues'])
-def get_issues(m):
-    get_all(m, Issues)
-
-@bot.message_handler(commands=['get_all_branches'])
-def get_branches(m):
-    get_all(m, CommentBranch)
-
-@bot.message_handler(commands=['get_all_labels'])
-def get_labels(m):
-    get_all(m, Labels)
-
-@bot.message_handler(commands=['get_all_links'])
-def get_links(m):
-    get_all(m, LabelsTaskLink)
-
-@bot.message_handler(commands=['fetch_users'])
-def get_fetched_users(m):
-    r = fetch_users()
-    res_id = ''
-    for i in r["users"]["nodes"]:
-        res_id += i["id"] + '\n'
-    bot.send_message(secret_var["telegram_id"], res_id)
-
-@bot.message_handler(commands=['backup'])
-def backup(m):
-    try:
-        directory_path = secret_var["directory_path"]
-        for file_name in os.listdir(directory_path):
-            file_path = os.path.join(directory_path, file_name)
-            if os.path.isfile(file_path):
-                try:
-                    file = open(file_path, "rb")
-                    bot.send_document(secret_var["telegram_id"], file)
-                    file.close()
-                except:
-                    pass
-    except Exception as e:
-        bot.send_message(5892105841, e)
 
 
 

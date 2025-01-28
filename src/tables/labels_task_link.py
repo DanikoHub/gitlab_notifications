@@ -4,7 +4,7 @@ from sqlalchemy import BigInteger, Column, Index
 import json
 
 from mysite.src.tables.base import Base
-from mysite.src.sql_requests import create_obj, select_by_field, select_filtered_rows
+from mysite.src.sql_requests import create_obj, select_by_field, delete_obj
 
 class LabelsTaskLink(Base):
 	__tablename__ = "labels_task_link"
@@ -36,36 +36,21 @@ def create_new_labeltasklink(Session, request, bot = None):
             LabelsTaskLink,
             {'issueId' : int(request.json[obj_attr]["id"]), 'labelId' : int(lbl["id"])}, bot = bot)
 
-with open('./mysite/secret_var.json', 'r') as file:
-    secret_var = json.load(file)
-
 def delete_labeltasklink(Session, request, bot):
     if 'labels' in request.json["changes"].keys():
         labels = request.json["labels"]
         links_in_db = select_by_field(Session, LabelsTaskLink, LabelsTaskLink.issueId, int(request.json["object_attributes"]["id"]), LabelsTaskLink.labelId)
 
-        gitlab_labels = []
-        if labels is not None:
-            for l in  labels:
-                gitlab_labels.append(l["id"])
-
-
         if links_in_db is None:
             return
 
-        for lbl_id in links_in_db:
-            if lbl_id in gitlab_labels:
-                continue
+        gitlab_labels = []
+        if labels is not None:
+            [gitlab_labels.append(l["id"]) for l in labels]
 
-            with Session() as session:
-                try:
-                    obj = select_filtered_rows(Session, LabelsTaskLink, {'issueId' : int(request.json["object_attributes"]["id"]), 'labelId' : int(lbl_id)})
-                    if len(obj) != 0:
-                        session.delete(obj[0])
-                except:
-                    session.rollback()
-                else:
-                    session.commit()
+        for lbl_id in links_in_db:
+            if lbl_id not in gitlab_labels:
+                delete_obj(Session, LabelsTaskLink, {'issueId' : int(request.json["object_attributes"]["id"]), 'labelId' : int(lbl_id)})
 
 
 

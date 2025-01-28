@@ -1,14 +1,11 @@
 import re
-import json
-
-with open('./mysite/secret_var.json', 'r') as file:
-	secret_var = json.load(file)
 
 from mysite.src.tables.users import Users
 from mysite.src.tables.issues import Issues
 from mysite.src.tables.comment_branch import CommentBranch
 
-from mysite.src.sql_requests import select_by_field, select_all_from_list, update_obj
+from mysite.src.sql_requests import select_by_field, select_from_list, update_obj
+from mysite.src.debug_tools import send_e
 
 def send_to_users(bot, users_to_send, text):
 	send = lambda user, text : bot.send_message(user, text)
@@ -18,39 +15,35 @@ def new_comment_notify(Session, request, bot):
 	users_to_send = get_users_for_notification(Session, request, bot)
 	send_to_users(bot, users_to_send, "Новый комментарий в issue - " + request.json["object_attributes"]["url"])
 
+def get_message_text_issue_change(Session, request, bot):
+	obj_attrs = request.json["object_attributes"]
+	issue = select_by_field(Session, Issues, Issues.issueId, int(obj_attrs["id"]))
+
+	match request.json["changes"]:
+		case {'id' : id}:
+			return "Новая issue - " + obj_attrs["url"]
+		case {'description' : description}:
+			return "Изменено описание в issue - " + obj_attrs["url"]
+		case {'assignees' : assignees}:
+			return "Изменены ответственные в issue - " + obj_attrs["url"]
+		case {'state_id' : state_id}:
+			try:
+				update_obj(Session, Issues, Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
+
+				if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
+					return "Issue была открыта - " + obj_attrs["url"] if request.json["changes"]["state_id"]["current"] == 1 \
+					else "Issue была закрыта - " + obj_attrs["url"]
+
+			except Exception as e:
+					send_e(bot, e, line = 'not53 ')
+
 def issue_change_notify(Session, request, bot):
 
 	users_to_send = get_users_for_notification(Session, request, bot)
+	mes_text = get_message_text_issue_change(Session, request, bot)
 
-	if request.json["event_type"] == 'issue' and users_to_send is not None:
-
-		obj_attrs = request.json["object_attributes"]
-
-		issue = select_by_field(Session, Issues, Issues.issueId, int(obj_attrs["id"]))
-
-		match request.json["changes"]:
-
-			case {'id' : id}:
-				send_to_users(bot, users_to_send, "Новая issue - " + obj_attrs["url"])
-
-			case {'description' : description}:
-				send_to_users(bot, users_to_send, "Изменено описание в issue - " + obj_attrs["url"])
-
-			case {'assignees' : assignees}:
-				send_to_users(bot, users_to_send, "Изменены ответственные в issue - " + obj_attrs["url"])
-
-			case {'state_id' : state_id}:
-				try:
-					update_obj(Session, Issues, Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
-
-					if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
-						send_to_users(bot, users_to_send, "Issue была переоткрыта - " + obj_attrs["url"] \
-						if request.json["changes"]["state_id"]["current"] == 1 \
-						else "Issue была закрыта - " + request.json["object_attributes"]["url"])
-
-				except Exception as e:
-					if bot is not None:
-						bot.send_message(secret_var["telegram_id"], 'not44 ' + str(e))
+	if request.json["event_type"] == 'issue' and users_to_send is not None and mes_text is not None:
+		send_to_users(bot, users_to_send, mes_text)
 
 
 def labels_change_notify(Session, request, bot):
@@ -65,46 +58,43 @@ def labels_change_notify(Session, request, bot):
 def get_users_for_notification(Session, request, bot = None):
 	users_to_send = set()
 	initiator_giltab_id = int(request.json["user"]["id"])
+	obj_attrs = request.json["object_attributes"]
 
 	if request.json["event_type"] == 'issue':
-		author = select_by_field(Session, Users, Users.gitlabId, int(request.json["object_attributes"]["author_id"]))
+		author = select_by_field(Session, Users, Users.gitlabId, int(obj_attrs["author_id"]))
 
 		if author is not None:
 			users_to_send.add(author[0].telegramId)
 
-		if request.json["object_attributes"]["assignee_ids"] is None:
+		if obj_attrs["assignee_ids"] is None:
 			return users_to_send
 
-		int_assignee_ids = [int(i) for i in request.json["object_attributes"]["assignee_ids"]]
+		assign_list = [int(i) for i in obj_attrs["assignee_ids"]]
+		assignees = select_from_list(Session, Users, Users.gitlabId, assign_list, Users.telegramId) if len(assign_list) > 0 else None
 
-		if len(int_assignee_ids) > 0:
-			assignees = select_all_from_list(Session, Users, Users.gitlabId, int_assignee_ids, Users.telegramId)
-
-			if assignees is not None:
-				users_to_send.update(assignees)
+		if assignees is not None:
+			users_to_send.update(assignees)
 
 	if request.json["event_type"] == 'note':
 		try:
-			comment = request.json["object_attributes"]["description"]
+			comment = obj_attrs["description"]
 			mentions = re.findall(r"@\w+", comment)
 
-			mentioned = select_all_from_list(Session, Users, class_field = Users.gitlabUsername, list_vals = mentions, return_field = Users.telegramId)
+			mentioned = select_from_list(Session, Users, class_field = Users.gitlabUsername, list_vals = mentions, return_field = Users.telegramId)
 			if mentioned is not None:
 				users_to_send.update(mentioned)
 
-			branche_comments = select_by_field(Session, CommentBranch, CommentBranch.discussionId, request.json["object_attributes"]["discussion_id"])
+			branche_comments = select_by_field(Session, CommentBranch, CommentBranch.discussionId, obj_attrs["discussion_id"])
 
 			if branche_comments is None:
 				return users_to_send
 
-			for b in branche_comments:
-				if b.userGitlabId != initiator_giltab_id:
-					branch_participant = select_by_field(Session, Users, Users.gitlabId, b.userGitlabId)
-					users_to_send.add(branch_participant[0].telegramId)
+			add_branch_users = [b.userGitlabId for b in branche_comments if b.userGitlabId != initiator_giltab_id]
+			branch_participants = select_from_list(Session, Users, Users.gitlabId, add_branch_users, return_field = Users.telegramId)
+			users_to_send.update(branch_participants)
 
 		except Exception as e:
-			if bot is not None:
-				bot.send_message(secret_var["telegram_id"], 'not89 ' + str(e))
+			send_e(bot, e, line = 'not107 ')
 
 	return users_to_send
 
