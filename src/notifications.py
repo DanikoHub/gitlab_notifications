@@ -13,7 +13,7 @@ def send_to_users(bot, users_to_send, text):
 
 def new_comment_notify(Session, request, bot):
 	users_to_send = get_users_for_notification(Session, request, bot)
-	send_to_users(bot, users_to_send, "Новый комментарий в issue - " + request.json["object_attributes"]["url"])
+	send_to_users(bot, users_to_send, "💬Новый комментарий в issue - " + request.json["object_attributes"]["url"])
 
 def get_message_text_issue_change(Session, request, bot):
 	obj_attrs = request.json["object_attributes"]
@@ -21,18 +21,18 @@ def get_message_text_issue_change(Session, request, bot):
 
 	match request.json["changes"]:
 		case {'id' : id}:
-			return "Новая issue - " + obj_attrs["url"]
+			return "🆕Новая issue - " + obj_attrs["url"]
 		case {'description' : description}:
-			return "Изменено описание в issue - " + obj_attrs["url"]
+			return "🧷Изменено описание в issue - " + obj_attrs["url"]
 		case {'assignees' : assignees}:
-			return "Изменены ответственные в issue - " + obj_attrs["url"]
+			return "👤Изменены ответственные в issue - " + obj_attrs["url"]
 		case {'state_id' : state_id}:
 			try:
 				update_obj(Session, Issues, Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
 
 				if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
-					return "Issue была открыта - " + obj_attrs["url"] if request.json["changes"]["state_id"]["current"] == 1 \
-					else "Issue была закрыта - " + obj_attrs["url"]
+					return "🔔Issue была открыта - " + obj_attrs["url"] if request.json["changes"]["state_id"]["current"] == 1 \
+					else "🔕Issue была закрыта - " + obj_attrs["url"]
 
 			except Exception as e:
 					send_e(bot, e, line = 'not53 ')
@@ -51,7 +51,7 @@ def labels_change_notify(Session, request, bot):
 
 	if 'labels' in request.json["changes"].keys() and users_to_send is not None:
 
-		send_to_users(bot, users_to_send, "Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + \
+		send_to_users(bot, users_to_send, "❗️Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + \
 		"\nАкутальные лейблы - " + ', '.join([lbl["title"] for lbl in request.json["changes"]["labels"]["current"]]))
 
 
