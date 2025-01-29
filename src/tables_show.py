@@ -13,10 +13,6 @@ from mysite.src.tables.labels_task_link import LabelsTaskLink
 with open('./mysite/secret_var.json', 'r') as file:
 	secret_var = json.load(file)
 
-def send_e(bot, e, line = ''):
-	if bot is not None:
-		bot.send_message(secret_var["telegram_id"], line + str(e))
-
 def get_all(Session, bot, m, Classname):
 	statement = select(Classname)
 	with Session() as session:

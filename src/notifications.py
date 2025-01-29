@@ -35,7 +35,7 @@ def get_message_text_issue_change(Session, request, bot):
 					else "🔕Issue была закрыта - " + obj_attrs["url"]
 
 			except Exception as e:
-					send_e(bot, e, line = 'not53 ')
+					send_e(e)
 
 def issue_change_notify(Session, request, bot):
 
@@ -94,7 +94,7 @@ def get_users_for_notification(Session, request, bot = None):
 			users_to_send.update(branch_participants)
 
 		except Exception as e:
-			send_e(bot, e, line = 'not107 ')
+			send_e(e)
 
 	return users_to_send
 

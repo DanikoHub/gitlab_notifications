@@ -19,7 +19,7 @@ def create_obj(Session, composed_obj, class_name = None, filter_ = None, bot = N
 				session.commit()
 
 	except Exception as e:
-	    send_e(bot, e, line = 'sql29 ')
+	    send_e(e)
 
 
 def update_obj(Session, class_name, class_update_field, update_value, update_json, bot = None):
@@ -30,7 +30,7 @@ def update_obj(Session, class_name, class_update_field, update_value, update_jso
 
 		except Exception as e:
 			session.rollback()
-			send_e(bot, e, line = 'sql40 ')
+			send_e(e)
 
 		else:
 			session.commit()
@@ -63,13 +63,12 @@ def select_with_filter(Session, class_name, filters, return_field = None, bot = 
 
 		with Session() as session:
 			query = session.query(class_name if return_field is None else return_field)
-
 			results = [query.filter(getattr(class_name, field) == value) for field, value in filters.items()][-1].all()
 
 		return results
 
 	except Exception as e:
-	    send_e(bot, e, line = 'sql80 ')
+	    send_e(e)
 
 
 def select_from_list(Session, class_name, class_field, list_vals, return_field = None):

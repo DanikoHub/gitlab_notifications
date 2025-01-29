@@ -50,7 +50,7 @@ def create_db_and_tables() -> None:
 try:
     create_db_and_tables()
 except Exception as e:
-     send_e(bot, e, line = 'flask52 ')
+     send_e(e)
 
 # --------------Обработка запроса из Gitlab---------------
 
@@ -78,7 +78,7 @@ def index():
                 new_comment_notify(Session, request, bot)
 
         except Exception as e:
-            send_e(bot, e, line = 'flask80 ')
+            send_e(e)
 
     return 'ok', 200
 
@@ -95,7 +95,7 @@ def get_client_id(m):
     try:
         create_new_user(Session, request, m.chat.id, m.text)
     except Exception as e:
-        send_e(bot, e, line = 'flask97 ')
+        send_e(e)
 
 # -------------Технические функции, не будут использоваться позже--------------
 setup_handlers(Session, bot)
