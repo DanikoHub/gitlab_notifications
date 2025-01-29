@@ -4,20 +4,22 @@ from mysite.src.tables.users import Users
 from mysite.src.tables.issues import Issues
 from mysite.src.tables.comment_branch import CommentBranch
 
-from mysite.src.sql_requests import select_by_field, select_from_list, update_obj
+from mysite.src.sql_requests import SQLRequest
 from mysite.src.debug_tools import send_e
 
 def send_to_users(bot, users_to_send, text):
+	send_e('users_to_send - ' + str(users_to_send))
 	send = lambda user, text : bot.send_message(user, text)
 	[send(u, text) for u in users_to_send]
 
 def new_comment_notify(Session, request, bot):
-	users_to_send = get_users_for_notification(Session, request, bot)
+	users_to_send = get_users_for_notification(Session, request)
 	send_to_users(bot, users_to_send, "💬Новый комментарий в issue - " + request.json["object_attributes"]["url"])
 
-def get_message_text_issue_change(Session, request, bot):
+def get_message_text_issue_change(Session, request):
 	obj_attrs = request.json["object_attributes"]
-	issue = select_by_field(Session, Issues, Issues.issueId, int(obj_attrs["id"]))
+	issues_sql_request = SQLRequest(Session, Issues)
+	issue = issues_sql_request.select_by_field(Issues.issueId, int(obj_attrs["id"]))
 
 	match request.json["changes"]:
 		case {'id' : id}:
@@ -28,7 +30,7 @@ def get_message_text_issue_change(Session, request, bot):
 			return "👤Изменены ответственные в issue - " + obj_attrs["url"]
 		case {'state_id' : state_id}:
 			try:
-				update_obj(Session, Issues, Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])}, bot)
+				issues_sql_request.update_obj(Issues.issueId, int(obj_attrs["id"]), {'isClosed' : int(request.json["changes"]["state_id"]["current"])})
 
 				if issue[0].isClosed != int(request.json["changes"]["state_id"]["current"]):
 					return "🔔Issue была открыта - " + obj_attrs["url"] if request.json["changes"]["state_id"]["current"] == 1 \
@@ -38,60 +40,64 @@ def get_message_text_issue_change(Session, request, bot):
 					send_e(e)
 
 def issue_change_notify(Session, request, bot):
-
-	users_to_send = get_users_for_notification(Session, request, bot)
-	mes_text = get_message_text_issue_change(Session, request, bot)
+	users_to_send = get_users_for_notification(Session, request)
+	mes_text = get_message_text_issue_change(Session, request)
 
 	if request.json["event_type"] == 'issue' and users_to_send is not None and mes_text is not None:
 		send_to_users(bot, users_to_send, mes_text)
 
 
 def labels_change_notify(Session, request, bot):
-	users_to_send = get_users_for_notification(Session, request, bot)
+	users_to_send = get_users_for_notification(Session, request)
 
 	if 'labels' in request.json["changes"].keys() and users_to_send is not None:
-
 		send_to_users(bot, users_to_send, "❗️Были изменены лейблы в issue - " + request.json["object_attributes"]["url"] + \
 		"\nАкутальные лейблы - " + ', '.join([lbl["title"] for lbl in request.json["changes"]["labels"]["current"]]))
 
 
-def get_users_for_notification(Session, request, bot = None):
+def get_users_for_notification(Session, request):
 	users_to_send = set()
 	initiator_giltab_id = int(request.json["user"]["id"])
 	obj_attrs = request.json["object_attributes"]
+	users_sql_request = SQLRequest(Session, Users)
 
 	if request.json["event_type"] == 'issue':
-		author = select_by_field(Session, Users, Users.gitlabId, int(obj_attrs["author_id"]))
+		author = users_sql_request.select_by_field(Users.gitlabId, int(obj_attrs["author_id"]))
 
-		if author is not None:
+		if author is not None and author != []:
 			users_to_send.add(author[0].telegramId)
 
 		if obj_attrs["assignee_ids"] is None:
 			return users_to_send
 
 		assign_list = [int(i) for i in obj_attrs["assignee_ids"]]
-		assignees = select_from_list(Session, Users, Users.gitlabId, assign_list, Users.telegramId) if len(assign_list) > 0 else None
+		assignees = users_sql_request.select_from_list(Users.gitlabId, assign_list, Users.telegramId) if len(assign_list) > 0 else None
 
-		if assignees is not None:
-			users_to_send.update(assignees)
+		if assignees is not None and assignees != []:
+			send_e('assignees - ' + str(assignees))
+			users_to_send.update([assignees[i][0] for i in range(len(assignees))])
+			send_e('users_to_send - ' + str(users_to_send))
 
 	if request.json["event_type"] == 'note':
 		try:
 			comment = obj_attrs["description"]
 			mentions = re.findall(r"@\w+", comment)
 
-			mentioned = select_from_list(Session, Users, class_field = Users.gitlabUsername, list_vals = mentions, return_field = Users.telegramId)
+			mentioned = users_sql_request.select_from_list(class_field = Users.gitlabUsername, list_vals = mentions, return_field = Users.telegramId)
 			if mentioned is not None:
-				users_to_send.update(mentioned)
+				users_to_send.update([mentioned[i][0] for i in range(len(mentioned))])
 
-			branche_comments = select_by_field(Session, CommentBranch, CommentBranch.discussionId, obj_attrs["discussion_id"])
+			combranch_sql_request = SQLRequest(Session, CommentBranch)
 
-			if branche_comments is None:
+			branche_comments = combranch_sql_request.select_by_field(CommentBranch.discussionId, obj_attrs["discussion_id"])
+
+			if branche_comments is None and branche_comments != []:
 				return users_to_send
 
 			add_branch_users = [b.userGitlabId for b in branche_comments if b.userGitlabId != initiator_giltab_id]
-			branch_participants = select_from_list(Session, Users, Users.gitlabId, add_branch_users, return_field = Users.telegramId)
-			users_to_send.update(branch_participants)
+			branch_participants = users_sql_request.select_from_list(Users.gitlabId, add_branch_users, return_field = Users.telegramId)
+
+			users_to_send.update([branch_participants[i][0] for i in range(len(branch_participants))])
 
 		except Exception as e:
 			send_e(e)

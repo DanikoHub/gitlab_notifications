@@ -2,7 +2,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import String, BigInteger, Column
 
-from mysite.src.sql_requests import create_obj
+from mysite.src.sql_requests import SQLRequest
 from mysite.src.tables.base import Base
 
 class Users(Base):
@@ -23,6 +23,7 @@ def create_new_user(Session, request, telegram_id, gitlab_id):
         gitlabUsername = "@username",
         telegramId=int(telegram_id),
         gitlabId=int(gitlab_id))
-    create_obj(Session, new_user, Users, {'telegramId' : int(telegram_id)})
+    user_sql_request = SQLRequest(Session, Users)
+    user_sql_request.create_obj(new_user, {'telegramId' : int(telegram_id)})
 
 

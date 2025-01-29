@@ -41,8 +41,8 @@ def index_bot():
 
 # -----------Подключение к БД----------------
 
-engine = create_engine(secret_var["mysql_url"], poolclass=NullPool)
-Session = sessionmaker(engine)
+engine = create_engine(secret_var["mysql_url"], poolclass=NullPool, pool_pre_ping=True)
+Session = sessionmaker(bind=engine)
 
 def create_db_and_tables() -> None:
 	Base.metadata.create_all(engine)
@@ -60,16 +60,16 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
-            create_new_issue(Session, request, bot)
-            create_new_label(Session, request, bot)
-            create_new_labeltasklink(Session, request, bot)
+            create_new_issue(Session, request)
+            create_new_label(Session, request)
+            create_new_labeltasklink(Session, request)
 
             if request.json["event_type"] == 'issue':
 
                 labels_change_notify(Session, request, bot)
                 issue_change_notify(Session, request, bot)
 
-                delete_labeltasklink(Session, request, bot)
+                delete_labeltasklink(Session, request)
 
             if request.json["event_type"] == 'note':
 

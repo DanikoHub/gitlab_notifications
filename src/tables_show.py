@@ -1,7 +1,6 @@
 import json
 from sqlalchemy import select
 
-# from mysite.src.sql_requests import select_all
 from mysite.src.fetch_users_from_gitlab import fetch_users
 
 from mysite.src.tables.users import Users
@@ -18,7 +17,7 @@ def get_all(Session, bot, m, Classname):
 	with Session() as session:
 		db_object = session.scalars(statement).all()
 	res = db_object
-	bot.send_message(secret_var["telegram_id"], str(res)[:2000])
+	bot.send_message(secret_var["telegram_id"], "Res = " + (str(res)[:-2000] if len(res) > 2000 else str(res)))
 
 def setup_handlers(Session, bot):
 	@bot.message_handler(commands=['get_all_users'])

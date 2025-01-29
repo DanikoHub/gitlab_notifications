@@ -4,7 +4,7 @@ from sqlalchemy import BigInteger, Column, Index
 import json
 
 from mysite.src.tables.base import Base
-from mysite.src.sql_requests import create_obj, select_by_field, delete_obj
+from mysite.src.sql_requests import SQLRequest
 
 class LabelsTaskLink(Base):
 	__tablename__ = "labels_task_link"
@@ -18,7 +18,7 @@ class LabelsTaskLink(Base):
 	def __repr__(self) -> str:
 			return f"LabelsTaskLink(id={self.id},\n\tissueId={self.issueId},\n\tlabelId={self.labelId})\n\n"
 
-def create_new_labeltasklink(Session, request, bot = None):
+def create_new_labeltasklink(Session, request):
     if request.json["event_type"] == 'issue':
         labels = request.json["labels"]
         obj_attr = 'object_attributes'
@@ -26,20 +26,20 @@ def create_new_labeltasklink(Session, request, bot = None):
         labels = request.json["issue"]["labels"]
         obj_attr = 'issue'
 
+    labeltasklink_sql_request = SQLRequest(Session, LabelsTaskLink)
     for lbl in labels:
         new_label_task_link = LabelsTaskLink(
             issueId = int(request.json[obj_attr]["id"]),
             labelId = int(lbl["id"])
         )
-        create_obj(Session,
-            new_label_task_link,
-            LabelsTaskLink,
-            {'issueId' : int(request.json[obj_attr]["id"]), 'labelId' : int(lbl["id"])}, bot = bot)
+        labeltasklink_sql_request.create_obj(new_label_task_link,
+            {'issueId' : int(request.json[obj_attr]["id"]), 'labelId' : int(lbl["id"])})
 
-def delete_labeltasklink(Session, request, bot):
+def delete_labeltasklink(Session, request):
     if 'labels' in request.json["changes"].keys():
+        labeltasklink_sql_request = SQLRequest(Session, LabelsTaskLink)
         labels = request.json["labels"]
-        links_in_db = select_by_field(Session, LabelsTaskLink, LabelsTaskLink.issueId, int(request.json["object_attributes"]["id"]), LabelsTaskLink.labelId)
+        links_in_db = labeltasklink_sql_request.select_by_field(LabelsTaskLink.issueId, int(request.json["object_attributes"]["id"]), LabelsTaskLink.labelId)
 
         if links_in_db is None:
             return
@@ -50,7 +50,7 @@ def delete_labeltasklink(Session, request, bot):
 
         for lbl_id in links_in_db:
             if lbl_id not in gitlab_labels:
-                delete_obj(Session, LabelsTaskLink, {'issueId' : int(request.json["object_attributes"]["id"]), 'labelId' : int(lbl_id)})
+                labeltasklink_sql_request.delete_obj({'issueId' : int(request.json["object_attributes"]["id"]), 'labelId' : int(lbl_id)})
 
 
 
