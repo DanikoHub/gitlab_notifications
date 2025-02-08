@@ -22,7 +22,6 @@ class SQLRequest:
 		:param filter_ : Filter is dictionary of unque fields and their values used to prevent creation of duplicate records
 		"""
 		try:
-			self.close_session()
 			obj_in_db = self.select_with_filter(filters = filter_) if self.class_name is not None and filter_ is not None else []
 
 			if obj_in_db is None or obj_in_db == []:
@@ -40,7 +39,6 @@ class SQLRequest:
 			send_e(e)
 
 	def update_obj(self, class_update_field, update_value, update_dict) -> None:
-		self.close_session()
 		with self.Session() as session:
 			try:
 				obj_to_update = session.query(self.class_name).filter(class_update_field == update_value)
@@ -55,7 +53,6 @@ class SQLRequest:
 
 	def select_all(self, return_field = None) -> List[Any]:
 		try:
-			self.close_session()
 			statement = select(self.class_name if return_field is None else return_field)
 
 			with self.Session() as session:
@@ -70,7 +67,6 @@ class SQLRequest:
 
 	def select_by_field(self, class_field, value, return_field = None) -> List[Any]:
 		try:
-			self.close_session()
 			with self.Session() as session:
 				db_object = session.query(self.class_name if return_field is None else return_field)\
 				.filter(class_field == value).all()
@@ -86,8 +82,6 @@ class SQLRequest:
 	def select_with_filter(self, filters, return_field = None) -> List[Any]:
 		try:
 			results = None
-
-			self.close_session()
 			with self.Session() as session:
 				query = session.query(self.class_name if return_field is None else return_field)
 
@@ -104,7 +98,6 @@ class SQLRequest:
 
 	def select_from_list(self, class_field, list_vals, return_field = None) -> List[Any]:
 		try:
-			self.close_session()
 			with self.Session() as session:
 					db_object = session.query(self.class_name if return_field is None else return_field).filter(class_field.in_(list_vals)).all()
 
@@ -116,7 +109,6 @@ class SQLRequest:
 
 
 	def delete_obj(self, filters) -> None:
-		self.close_session()
 		with self.Session() as session:
 			try:
 				obj = self.select_with_filter(self, filters)
