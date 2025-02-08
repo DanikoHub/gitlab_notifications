@@ -16,7 +16,7 @@ from mysite.src.tables.base import Base
 
 from mysite.src.debug_tools import send_e
 from mysite.src.tables_show import setup_handlers
-from mysite.src.notifications import issue_change_notify, labels_change_notify, new_comment_notify
+from mysite.src.notifications import Notification#issue_change_notify, new_comment_notify
 
 # -------------Настройка бота------------
 
@@ -26,7 +26,7 @@ with open('./mysite/secret_var.json', 'r') as file:
 
 token = secret_var["telegram_token"]
 secret_bot = secret_var["bot_endpoint"]
-url = 'https://GitlabWebHook.pythonanywhere.com/' + secret_bot
+url = secret_var["bot_domain"] + secret_bot
 
 bot = telebot.TeleBot(token, threaded = False)
 bot.remove_webhook()
@@ -41,7 +41,7 @@ def index_bot():
 
 # -----------Подключение к БД----------------
 
-engine = create_engine(secret_var["mysql_url"], poolclass=NullPool, pool_pre_ping=True)
+engine = create_engine(secret_var["postgre_url"], poolclass=NullPool, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
 def create_db_and_tables() -> None:
@@ -60,14 +60,14 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
+            notification = Notification(Session, request, bot)
+
             create_new_issue(Session, request)
             create_new_label(Session, request)
             create_new_labeltasklink(Session, request)
 
             if request.json["event_type"] == 'issue':
-
-                labels_change_notify(Session, request, bot)
-                issue_change_notify(Session, request, bot)
+                notification.issue_change_notify()
 
                 delete_labeltasklink(Session, request)
 
@@ -75,7 +75,7 @@ def index():
 
                 create_new_commentbranch(Session, request)
 
-                new_comment_notify(Session, request, bot)
+                notification.new_comment_notify()
 
         except Exception as e:
             send_e(e)

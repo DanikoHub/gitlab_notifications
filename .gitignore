@@ -4,3 +4,4 @@ __pycache__/
 er.email
 gitlabnot/
 logs/
+.DS_Store
