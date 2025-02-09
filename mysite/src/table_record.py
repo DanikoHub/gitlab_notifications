@@ -11,7 +11,7 @@ class Record:
         self.bot = bot
 
     def create_new_record(self, class_name, **args):
-        RecordFactory.create_table(class_name, self.Session, self.request, **args)
+        RecordFactory.create_record(class_name, self.Session, self.request, **args)
         if self.bot is not None:
             RecordFactory.notify(class_name, self.Session, self.request, self.bot)
 
@@ -26,7 +26,7 @@ class RecordFactory:
         self.request = request
 
     @classmethod
-    def create_table(cls, table_name, Session, request, **args):
+    def create_record(cls, table_name, Session, request, **args):
         return table_name(Session, request).create_table(**args)
 
     @classmethod
@@ -43,7 +43,7 @@ class TableUser(RecordFactory):
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
-    def create_table(self, telegram_id, gitlab_id):
+    def create_record(self, telegram_id, gitlab_id):
         gl_fetch = fetch_users(gitlab_id)
         name_fetch = gl_fetch["user"]["name"]
         username_fetch = "@" + gl_fetch["user"]["username"]
@@ -67,7 +67,7 @@ class TableIssue(RecordFactory):
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
-    def create_table(self):
+    def create_record(self):
         if self.request.json["event_type"] == 'issue':
             obj_attr = 'object_attributes'
         else:
@@ -96,7 +96,7 @@ class TableCommentBranch(RecordFactory):
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
-    def create_table(self):
+    def create_record(self):
         if self.request.json["event_type"] == 'note':
             obj_attrs = self.request.json["object_attributes"]
         
@@ -120,7 +120,7 @@ class TableLabel(RecordFactory):
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
-    def create_table(self):
+    def create_record(self):
         if self.request.json["event_type"] == 'issue':
             labels = self.request.json["labels"]
         else:
@@ -144,7 +144,7 @@ class TableLabelTaskLink(RecordFactory):
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
-    def create_table(self):
+    def create_record(self):
         if self.request.json["event_type"] == 'issue':
             labels = self.request.json["labels"]
             obj_attr = 'object_attributes'
