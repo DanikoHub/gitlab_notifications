@@ -27,7 +27,7 @@ class RecordFactory:
 
     @classmethod
     def create_record(cls, table_name, Session, request, **args):
-        return table_name(Session, request).create_table(**args)
+        return table_name(Session, request).create_record(**args)
 
     @classmethod
     def delete_record(cls, table_name : LabelsTaskLink, Session, request, **args):
