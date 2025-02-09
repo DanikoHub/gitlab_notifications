@@ -1,17 +1,16 @@
 from flask import Flask, request
 from functools import partial
 import telebot
-import json
+import os
+from dotenv import load_dotenv
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from mysite.src.records import Record
-
-from mysite.src.table_factory import TableUser, TableIssue, TableCommentBranch, TableLabel, TableLabelTaskLink
-
+from mysite.src.table_record import TableUser, TableIssue, TableCommentBranch, TableLabel, TableLabelTaskLink
 from mysite.src.tables.base import Base
+from mysite.src.table_record import Record
 
 from mysite.src.log_tools import log_error
 from mysite.src.tables_show import setup_handlers
@@ -19,12 +18,15 @@ from mysite.src.tables_show import setup_handlers
 # -------------Настройка бота------------
 
 app = Flask(__name__)
-with open('./mysite/secret_var.json', 'r') as file:
-    secret_var = json.load(file)
 
-token = secret_var["telegram_token"]
-secret_bot = secret_var["bot_endpoint"]
-url = secret_var["bot_domain"] + secret_bot
+load_dotenv()
+
+token = os.getenv("TELEGRAM_TOKEN")
+secret_bot = os.getenv("BOT_ENDPOINT")
+url = os.getenv("BOT_DOMAIN") + secret_bot
+postgre_url = os.getenv("POSTGRE_URL")
+telegram_id = os.getenv("TELEGRAM_ID")
+secret = os.getenv("GITLAB_ENDPOINT")
 
 bot = telebot.TeleBot(token, threaded = False)
 bot.remove_webhook()
@@ -39,7 +41,7 @@ def index_bot():
 
 # -----------Подключение к БД----------------
 
-engine = create_engine(secret_var["postgre_url"], poolclass=NullPool, pool_pre_ping=True)
+engine = create_engine(postgre_url, poolclass=NullPool, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
 def create_db_and_tables() -> None:
@@ -51,8 +53,6 @@ except Exception as e:
      log_error(e)
 
 # --------------Обработка запроса из Gitlab---------------
-
-secret = secret_var["gitlab_endpoint"]
 
 @app.route('/'+secret, methods = ['POST', 'GET'])
 def index():
@@ -72,7 +72,7 @@ def index():
     return 'ok', 200
 
 # ---------------Команды Бота-----------------
-bot.send_message(secret_var["telegram_id"], "Бот запущен")
+bot.send_message(telegram_id, "Бот запущен")
 
 @bot.message_handler(commands=['start'])
 def start_func(m):

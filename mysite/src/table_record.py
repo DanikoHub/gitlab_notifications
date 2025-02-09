@@ -1,8 +1,25 @@
 from mysite.src.tables import Users, Issues, CommentBranch, Labels, LabelsTaskLink
 from mysite.src.sql_requests import SQLRequest
+from mysite.src.notifications import Notification, NotificationIssue, NotificationComment
+from mysite.src.fetch_users_from_gitlab import fetch_users
+
+class Record:
+
+    def __init__(self, Session, request = "", bot = None):
+        self.Session = Session
+        self.request = request
+        self.bot = bot
+
+    def create_new_record(self, class_name, **args):
+        RecordFactory.create_table(class_name, self.Session, self.request, **args)
+        if self.bot is not None:
+            RecordFactory.notify(class_name, self.Session, self.request, self.bot)
+
+    def delete_record(self, class_name):
+        RecordFactory.delete_record(class_name, self.Session, self.request)
 
 
-class TableFactory:
+class RecordFactory:
 
     def __init__(self, Session, request):
         self.Session = Session
@@ -15,25 +32,37 @@ class TableFactory:
     @classmethod
     def delete_record(cls, table_name : LabelsTaskLink, Session, request, **args):
         return table_name(Session, request).delete_record(**args)
+    
+    @classmethod
+    def notify(cls, table_name, Session, request, bot):
+        return table_name(Session, request).notify(bot)
 
 
-class TableUser(TableFactory):
+class TableUser(RecordFactory):
 
     def __init__(self, Session, request):
         super().__init__(Session, request)
 
     def create_table(self, telegram_id, gitlab_id):
+        gl_fetch = fetch_users(gitlab_id)
+        name_fetch = gl_fetch["user"]["name"]
+        username_fetch = "@" + gl_fetch["user"]["username"]
+
+
         new_user = Users(
-            name="new_user",
-            gitlabUsername = "@username",
+            name=name_fetch,
+            gitlabUsername = username_fetch,
             telegramId=int(telegram_id),
             gitlabId=int(gitlab_id))
         
         user_sql_request = SQLRequest(self.Session, Users)
         user_sql_request.create_obj(new_user, {'telegramId' : int(telegram_id)})
+    
+    def notify(self, bot):
+        pass
 
 
-class TableIssue(TableFactory):
+class TableIssue(RecordFactory):
 
     def __init__(self, Session, request):
         super().__init__(Session, request)
@@ -56,11 +85,13 @@ class TableIssue(TableFactory):
 
         issue_sql_request = SQLRequest(self.Session, Issues)
         issue_sql_request.create_obj(new_issue, {'issueId' : int(self.request.json[obj_attr]["id"])})
-
-        return new_issue
+    
+    def notify(self, bot):
+        notification = NotificationIssue(self.Session, self.request, bot)
+        notification.notify()
 
  
-class TableCommentBranch(TableFactory):
+class TableCommentBranch(RecordFactory):
 
     def __init__(self, Session, request):
         super().__init__(Session, request)
@@ -78,9 +109,13 @@ class TableCommentBranch(TableFactory):
             combranch_sql_request.create_obj(new_branch,\
                 {'discussionId' : obj_attrs["discussion_id"],
                 'userGitlabId' : int(obj_attrs["author_id"])})
+    
+    def notify(self, bot):            
+        notification = NotificationComment(self.Session, self.request, bot)
+        notification.notify()
 
 
-class TableLabel(TableFactory):
+class TableLabel(RecordFactory):
 
     def __init__(self, Session, request):
         super().__init__(Session, request)
@@ -99,9 +134,12 @@ class TableLabel(TableFactory):
             )
             
             label_sql_request.create_obj(new_label, {'labelId' : lbl["id"]})
+    
+    def notify(self, bot):
+        pass
 
 
-class TableLabelTaskLink(TableFactory):
+class TableLabelTaskLink(RecordFactory):
 
     def __init__(self, Session, request):
         super().__init__(Session, request)
@@ -143,5 +181,8 @@ class TableLabelTaskLink(TableFactory):
             for lbl_id in links_in_db:
                 if lbl_id[0] not in gitlab_labels:
                     labeltasklink_sql_request.delete_obj(filters={'issueId' : int(self.request.json[obj_attr]["id"]), 'labelId' : int(lbl_id[0])})
+
+    def notify(self, bot):
+        pass
 
 

@@ -1,5 +1,5 @@
-import json
 from sqlalchemy import select
+import os
 
 from mysite.src.fetch_users_from_gitlab import fetch_users
 
@@ -9,15 +9,15 @@ from mysite.src.tables.comment_branch import CommentBranch
 from mysite.src.tables.labels import Labels
 from mysite.src.tables.labels_task_link import LabelsTaskLink
 
-with open('./mysite/secret_var.json', 'r') as file:
-	secret_var = json.load(file)
+telegram_id = os.getenv("TELEGRAM_ID")
+
 
 def get_all(Session, bot, m, Classname):
 	statement = select(Classname)
 	with Session() as session:
 		db_object = session.scalars(statement).all()
 	res = db_object
-	bot.send_message(secret_var["telegram_id"], "Res = " + (str(res)[:-2000] if len(res) > 2000 else str(res)))
+	bot.send_message(telegram_id, "Res = " + (str(res)[:-2000] if len(res) > 2000 else str(res)))
 
 def setup_handlers(Session, bot):
 	@bot.message_handler(commands=['get_all_users'])
@@ -39,10 +39,4 @@ def setup_handlers(Session, bot):
 	@bot.message_handler(commands=['get_all_links'])
 	def get_links(m):
 		get_all(Session, bot, m, LabelsTaskLink)
-
-	@bot.message_handler(commands=['fetch_users'])
-	def get_fetched_users(m):
-		r = fetch_users()
-		res_id = '\n'.join([i["id"] for i in r["users"]["nodes"]])
-		bot.send_message(secret_var["telegram_id"], "Fetched users - " + res_id[:2000])
 
