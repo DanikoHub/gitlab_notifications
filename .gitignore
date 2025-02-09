@@ -5,4 +5,4 @@ er.email
 gitlabnot/
 logs/
 .DS_Store
-Dockerfile
+.env
