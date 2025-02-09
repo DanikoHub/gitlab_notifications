@@ -1,22 +1,20 @@
 from flask import Flask, request
-import telebot
 from functools import partial
+import telebot
 import json
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-from mysite.src.tables.users import create_new_user
-from mysite.src.tables.issues import create_new_issue
-from mysite.src.tables.comment_branch import create_new_commentbranch
-from mysite.src.tables.labels import create_new_label
-from mysite.src.tables.labels_task_link import create_new_labeltasklink, delete_labeltasklink
+from mysite.src.records import Record
+
+from mysite.src.table_factory import TableUser, TableIssue, TableCommentBranch, TableLabel, TableLabelTaskLink
+
 from mysite.src.tables.base import Base
 
-from mysite.src.debug_tools import send_e
+from mysite.src.log_tools import log_error
 from mysite.src.tables_show import setup_handlers
-from mysite.src.notifications import Notification#issue_change_notify, new_comment_notify
 
 # -------------Настройка бота------------
 
@@ -50,7 +48,7 @@ def create_db_and_tables() -> None:
 try:
     create_db_and_tables()
 except Exception as e:
-     send_e(e)
+     log_error(e)
 
 # --------------Обработка запроса из Gitlab---------------
 
@@ -60,25 +58,16 @@ secret = secret_var["gitlab_endpoint"]
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
-            notification = Notification(Session, request, bot)
+            record = Record(Session, request, bot)
+            record.create_new_record(TableIssue)
+            record.create_new_record(TableLabel)
+            record.create_new_record(TableLabelTaskLink)
+            record.create_new_record(TableCommentBranch)
 
-            create_new_issue(Session, request)
-            create_new_label(Session, request)
-            create_new_labeltasklink(Session, request)
-
-            if request.json["event_type"] == 'issue':
-                notification.issue_change_notify()
-
-                delete_labeltasklink(Session, request)
-
-            if request.json["event_type"] == 'note':
-
-                create_new_commentbranch(Session, request)
-
-                notification.new_comment_notify()
+            record.delete_record(TableLabelTaskLink)
 
         except Exception as e:
-            send_e(e)
+            log_error(e)
 
     return 'ok', 200
 
@@ -93,9 +82,10 @@ def start_func(m):
 
 def get_client_id(m):
     try:
-        create_new_user(Session, request, m.chat.id, m.text)
+        record_user = Record(Session)
+        record_user.create_new_record(TableUser, telegram_id = m.chat.id, gitlab_id = m.text)
     except Exception as e:
-        send_e(e)
+        log_error(e)
 
 # -------------Технические функции, не будут использоваться позже--------------
 setup_handlers(Session, bot)
