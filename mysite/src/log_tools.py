@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s")
 
-def send_e(e):
+def log_error(e):
     logging.error(e, exc_info=True)
 
 
