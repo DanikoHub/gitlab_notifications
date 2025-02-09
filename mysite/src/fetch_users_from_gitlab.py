@@ -1,11 +1,8 @@
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
-import json
+import os
 
-with open('./mysite/secret_var.json', 'r') as file:
-    secret_var = json.load(file)
-
-gitlab_token = secret_var["gitlab_token"]
+gitlab_token = os.getenv("GITLAB_TOKEN")
 
 transport = RequestsHTTPTransport(
     url="https://gitlab.com/api/graphql",
@@ -19,20 +16,15 @@ transport = RequestsHTTPTransport(
 
 client = Client(transport=transport, fetch_schema_from_transport=True)
 
-username = secret_var["gitlab_username"]
-
-query = gql(f'''
-    query Users {{
-        users(usernames: ["{username}"]) {{
-            nodes {{
-                id
+def fetch_users(user_id):
+    query = gql(f'''
+        query User {{
+            user(id: "gid://gitlab/User/{user_id}") {{
                 username
+                name
             }}
-        }}
-    }}'''
-)
-
-def fetch_users():
+        }}'''
+    )
     try:
         response = client.execute(query)
         return response
