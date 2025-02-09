@@ -1,11 +1,7 @@
-import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-with open('./mysite/secret_var.json', 'r') as file:
-	secret_var = json.load(file)
-
-log_name = secret_var["directory_path"] + "src/logs/" + 'app_log.log'
+log_name = "mysite/src/logs/app_log.log"
 
 logging.basicConfig(
     handlers = [RotatingFileHandler(log_name, maxBytes = 20000, backupCount = 0)],

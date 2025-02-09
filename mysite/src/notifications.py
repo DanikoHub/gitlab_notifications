@@ -1,12 +1,11 @@
 import re
 
 from mysite.src.tables import Users, Issues, CommentBranch
-from mysite.src.table_factory import TableIssue, TableCommentBranch
 
 from mysite.src.sql_requests import SQLRequest
 from mysite.src.log_tools import log_error
 
-class NotificationFactory:
+class Notification:
 
 	def __init__(self, Session, request, bot):
 		self.Session = Session
@@ -20,15 +19,11 @@ class NotificationFactory:
 	def get_users_for_notification(self):
 		pass
 
-	@classmethod
-	def notify(cls, table_name, Session, request, bot):
-		if table_name == TableIssue:
-			NotificationIssue(Session, request, bot).notify()
-		if table_name == TableCommentBranch:
-			NotificationComment(Session, request, bot).notify()
+	def notify(self):
+		pass
 
 
-class NotificationIssue(NotificationFactory):
+class NotificationIssue(Notification):
 	
 	def __init__(self, Session, request, bot):
 		super().__init__(Session, request, bot)
@@ -93,7 +88,7 @@ class NotificationIssue(NotificationFactory):
 			self.send_to_users(users_to_send, mes_text)
 
 
-class NotificationComment(NotificationFactory):
+class NotificationComment(Notification):
 	
 	def __init__(self, Session, request, bot):
 		super().__init__(Session, request, bot)
