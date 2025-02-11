@@ -1,16 +1,21 @@
 from mysite.src.tables import Users, Issues, CommentBranch, Labels, LabelsTaskLink
 from mysite.src.sql_requests import SQLRequest
-from mysite.src.notifications import Notification, NotificationIssue, NotificationComment
-from mysite.src.fetch_users_from_gitlab import fetch_users
+from mysite.src.notifications import NotificationIssue, NotificationComment
+from mysite.src.fetch_users_from_gitlab import get_user_info
+
+from mysite.src.tables.base import Base
+from sqlalchemy.orm import sessionmaker
+from flask import Request
+from telebot import TeleBot
 
 class Record:
 
-    def __init__(self, Session, request = "", bot = None):
+    def __init__(self, Session : sessionmaker, request: str = "", bot : TeleBot = None):
         self.Session = Session
         self.request = request
         self.bot = bot
 
-    def create_new_record(self, class_name, **args):
+    def create_new_record(self, class_name : Base, **args):
         RecordFactory.create_record(class_name, self.Session, self.request, **args)
         if self.bot is not None:
             RecordFactory.notify(class_name, self.Session, self.request, self.bot)
@@ -21,18 +26,18 @@ class Record:
 
 class RecordFactory:
 
-    def __init__(self, Session, request):
+    def __init__(self, Session : sessionmaker, request : str):
         self.Session = Session
         self.request = request
 
     @classmethod
-    def create_record(cls, table_name, Session, request, **args):
+    def create_record(cls, table_name, Session : sessionmaker, request : Request, **args):
         return table_name(Session, request).create_record(**args)
 
     @classmethod
     def delete_record(cls, table_name : LabelsTaskLink, Session, request, **args):
         return table_name(Session, request).delete_record(**args)
-    
+
     @classmethod
     def notify(cls, table_name, Session, request, bot):
         return table_name(Session, request).notify(bot)
@@ -40,11 +45,11 @@ class RecordFactory:
 
 class TableUser(RecordFactory):
 
-    def __init__(self, Session, request):
+    def __init__(self, Session : sessionmaker, request : Request):
         super().__init__(Session, request)
 
-    def create_record(self, telegram_id, gitlab_id):
-        gl_fetch = fetch_users(gitlab_id)
+    def create_record(self, telegram_id : int, gitlab_id : int):
+        gl_fetch = get_user_info(gitlab_id)
         name_fetch = gl_fetch["user"]["name"]
         username_fetch = "@" + gl_fetch["user"]["username"]
 
@@ -54,17 +59,17 @@ class TableUser(RecordFactory):
             gitlabUsername = username_fetch,
             telegramId=int(telegram_id),
             gitlabId=int(gitlab_id))
-        
+
         user_sql_request = SQLRequest(self.Session, Users)
         user_sql_request.create_obj(new_user, {'telegramId' : int(telegram_id)})
-    
+
     def notify(self, bot):
         pass
 
 
 class TableIssue(RecordFactory):
 
-    def __init__(self, Session, request):
+    def __init__(self, Session : sessionmaker, request : Request):
         super().__init__(Session, request)
 
     def create_record(self):
@@ -85,21 +90,21 @@ class TableIssue(RecordFactory):
 
         issue_sql_request = SQLRequest(self.Session, Issues)
         issue_sql_request.create_obj(new_issue, {'issueId' : int(self.request.json[obj_attr]["id"])})
-    
-    def notify(self, bot):
+
+    def notify(self, bot : TeleBot):
         notification = NotificationIssue(self.Session, self.request, bot)
         notification.notify()
 
- 
+
 class TableCommentBranch(RecordFactory):
 
-    def __init__(self, Session, request):
+    def __init__(self, Session : sessionmaker, request : Request):
         super().__init__(Session, request)
 
     def create_record(self):
         if self.request.json["event_type"] == 'note':
             obj_attrs = self.request.json["object_attributes"]
-        
+
             new_branch = CommentBranch(
                 discussionId=obj_attrs["discussion_id"],
                 userGitlabId=int(obj_attrs["author_id"])
@@ -109,8 +114,8 @@ class TableCommentBranch(RecordFactory):
             combranch_sql_request.create_obj(new_branch,\
                 {'discussionId' : obj_attrs["discussion_id"],
                 'userGitlabId' : int(obj_attrs["author_id"])})
-    
-    def notify(self, bot):            
+
+    def notify(self, bot : TeleBot):
         notification = NotificationComment(self.Session, self.request, bot)
         notification.notify()
 
@@ -132,9 +137,9 @@ class TableLabel(RecordFactory):
                 name = lbl["title"],
                 labelId = lbl["id"]
             )
-            
+
             label_sql_request.create_obj(new_label, {'labelId' : lbl["id"]})
-    
+
     def notify(self, bot):
         pass
 
@@ -162,7 +167,7 @@ class TableLabelTaskLink(RecordFactory):
 
             labeltasklink_sql_request.create_obj(new_label_task_link,
                 {'issueId' : int(self.request.json[obj_attr]["id"]), 'labelId' : int(lbl["id"])})
-    
+
     def delete_record(self):
         if "changes" in self.request.json and 'labels' in self.request.json["changes"].keys():
             obj_attr = 'object_attributes'
@@ -184,5 +189,3 @@ class TableLabelTaskLink(RecordFactory):
 
     def notify(self, bot):
         pass
-
-

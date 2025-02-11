@@ -1,4 +1,8 @@
 import re
+from sqlalchemy.orm import sessionmaker
+from telebot import TeleBot
+from flask import Request
+from typing import List
 
 from mysite.src.tables import Users, Issues, CommentBranch
 
@@ -7,28 +11,28 @@ from mysite.src.log_tools import log_error
 
 class Notification:
 
-	def __init__(self, Session, request, bot):
+	def __init__(self, Session : sessionmaker, request : Request, bot : TeleBot):
 		self.Session = Session
 		self.request = request
 		self.bot = bot
 
-	def send_to_users(self, users_to_send, text):
+	def send_to_users(self, users_to_send: List[int], text: str) -> None:
 		send = lambda user, text : self.bot.send_message(user, text)
 		[send(u, text) for u in users_to_send]
-	
-	def get_users_for_notification(self):
+
+	def get_users_for_notification(self) -> List[int]:
 		pass
 
-	def notify(self):
+	def notify(self) -> None:
 		pass
 
 
 class NotificationIssue(Notification):
-	
-	def __init__(self, Session, request, bot):
+
+	def __init__(self, Session : sessionmaker, request : Request, bot : TeleBot):
 		super().__init__(Session, request, bot)
 
-	def get_message_text_issue_change(self):
+	def get_message_text_issue_change(self) -> str:
 		obj_attrs = self.request.json["object_attributes"]
 
 		if "changes" in self.request.json:
@@ -56,7 +60,7 @@ class NotificationIssue(Notification):
 					except Exception as e:
 							log_error(e)
 
-	def get_users_for_notification(self):
+	def get_users_for_notification(self) -> List[int]:
 		users_to_send = set()
 
 		if self.request.json["event_type"] == 'issue':
@@ -77,10 +81,10 @@ class NotificationIssue(Notification):
 
 			if assignees is not None and assignees != []:
 				users_to_send.update([assignees[i][0] for i in range(len(assignees))])
-		
+
 		return users_to_send
 
-	def notify(self):
+	def notify(self) -> None:
 		users_to_send = self.get_users_for_notification()
 		mes_text = self.get_message_text_issue_change()
 
@@ -89,18 +93,18 @@ class NotificationIssue(Notification):
 
 
 class NotificationComment(Notification):
-	
-	def __init__(self, Session, request, bot):
+
+	def __init__(self, Session : sessionmaker, request : Request, bot : TeleBot):
 		super().__init__(Session, request, bot)
-	
-	def get_users_for_notification(self):
+
+	def get_users_for_notification(self) -> List[int]:
 		users_to_send = set()
 
 		if self.request.json["event_type"] == 'note':
 			initiator_giltab_id = int(self.request.json["user"]["id"])
 			obj_attrs = self.request.json["object_attributes"]
 			users_sql_request = SQLRequest(self.Session, Users)
-			
+
 			try:
 				comment = obj_attrs["description"]
 				mentions = re.findall(r"@\w+", comment)
@@ -126,6 +130,6 @@ class NotificationComment(Notification):
 
 		return users_to_send
 
-	def notify(self):
+	def notify(self) -> None:
 		users_to_send = self.get_users_for_notification()
 		self.send_to_users(users_to_send, "💬Новый комментарий в issue - " + self.request.json["object_attributes"]["url"])

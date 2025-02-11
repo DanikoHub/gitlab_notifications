@@ -8,20 +8,12 @@ from sqlalchemy import select
 from mysite.src.log_tools import log_error
 
 class SQLRequest:
-	"""Class for making requests to db using SQLAlchemy module"""
 
 	def __init__(self, Session : sessionmaker, class_name : Base):
 		self.Session = Session
 		self.class_name = class_name
 
-	def create_obj(self, composed_obj, filter_dict : Dict[str, Any]) -> None:
-		"""
-		This method is used to create a new record in the database
-
-		:param composed_obj: The composed object is instance of class that inheretes class Base, Example - class Users(Base)
-
-		:param filter_dict : Filter is dictionary of unque fields and their values used to prevent creation of duplicate records
-		"""
+	def create_obj(self, composed_obj : Base, filter_dict : Dict[str, Any]) -> None:
 		try:
 			obj_in_db = self.select_with_filter(filters = filter_dict) if self.class_name is not None and filter_dict is not None else []
 
@@ -39,16 +31,7 @@ class SQLRequest:
 		except Exception as e:
 			log_error(e)
 
-	def update_obj(self, filter_class_field : Mapped[Any], filter_value, update_dict : Dict[str, Any]) -> None:
-		"""
-		This method is used to update a record in the database
-
-		:param filter_class_field: The field of the class that is used to filter the record
-
-		:param filter_value: The value of the field that is used to filter the record
-
-		:param update_dict: The dictionary of the fields and their new values
-		"""
+	def update_obj(self, filter_class_field : Mapped[Any], filter_value: Any, update_dict : Dict[str, Any]) -> None:
 		with self.Session() as session:
 			try:
 				obj_to_update = session.query(self.class_name).filter(filter_class_field == filter_value)
@@ -61,12 +44,7 @@ class SQLRequest:
 			else:
 				session.commit()
 
-	def select_all(self, return_field : Mapped[Any] = None) -> List[Any]:
-		"""
-		This method is used to select all records from the database
-
-		:param return_field: The field of the class that will be returned
-		"""
+	def select_all(self, return_field : Mapped[Any] = None) -> List[Any] | None:
 		try:
 			statement = select(self.class_name if return_field is None else return_field)
 
@@ -77,19 +55,10 @@ class SQLRequest:
 
 		except Exception as e:
 			log_error(e)
-			return []
+			return None
 
 
-	def select_by_field(self, filter_class_field : Mapped[Any], filter_value, return_field : Mapped[Any] = None) -> List[Any]:
-		"""
-		This method is used to select a record from the database by a field
-
-		:param filter_class_field: The field of the class that is used to filter the record
-
-		:param filter_value: The value of the field that is used to filter the record
-
-		:param return_field: The field of the class that will be returned
-		"""
+	def select_by_field(self, filter_class_field : Mapped[Any], filter_value, return_field : Mapped[Any] = None) -> List[Any] | None:
 		try:
 			with self.Session() as session:
 				db_object = session.query(self.class_name if return_field is None else return_field)\
@@ -99,17 +68,10 @@ class SQLRequest:
 
 		except Exception as e:
 			log_error(e)
-			return []
+			return None
 
 
-	def select_with_filter(self, filters : Dict[str, Any], return_field : Mapped[Any] = None) -> List[Any]:
-		"""
-		This method is used to select a record from the database by a filter
-
-		:param filters: The filter of the class that will be used to select the record
-
-		:param return_field: The field of the class that will be returned
-		"""
+	def select_with_filter(self, filters : Dict[str, Any], return_field : Mapped[Any] = None) -> List[Any] | None:
 		try:
 			results = None
 			with self.Session() as session:
@@ -123,17 +85,10 @@ class SQLRequest:
 
 		except Exception as e:
 			log_error(e)
-			return []
+			return None
 
 
-	def select_from_list(self, filter_class_field : Mapped[Any], filter_list_values : List[Any], return_field : Mapped[Any] = None) -> List[Any]:
-		"""
-		This method is used to select a record from the database by a list of values
-
-		:param filter_class_field: The field of the class that is used to filter the record
-
-		:param filter_list_values: The list of values that are used to filter the record
-		"""
+	def select_from_list(self, filter_class_field : Mapped[Any], filter_list_values : List[Any], return_field : Mapped[Any] = None) -> List[Any] | None:
 		try:
 			with self.Session() as session:
 					db_object = session.query(self.class_name if return_field is None else return_field).filter(filter_class_field.in_(filter_list_values)).all()
@@ -142,15 +97,10 @@ class SQLRequest:
 
 		except Exception as e:
 			log_error(e)
-			return []
+			return None
 
 
 	def delete_obj(self, filters : Dict[str, Any]) -> None:
-		"""
-		This method is used to delete a record from the database
-
-		:param filters: The filter of the class that is used to delete the record
-		"""
 		with self.Session() as session:
 			try:
 				obj = self.select_with_filter(filters)
@@ -163,7 +113,3 @@ class SQLRequest:
 
 			else:
 				session.commit()
-
-
-
-
