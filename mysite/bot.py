@@ -13,7 +13,6 @@ from mysite.src.tables.base import Base
 from mysite.src.table_record import Record
 
 from mysite.src.log_tools import log_error
-from mysite.src.tables_show import setup_handlers
 
 # -------------Настройка бота------------
 
@@ -26,7 +25,7 @@ secret_bot = os.getenv("BOT_ENDPOINT")
 url = os.getenv("BOT_DOMAIN") + secret_bot
 postgre_url = os.getenv("POSTGRE_URL")
 telegram_id = os.getenv("TELEGRAM_ID")
-secret = os.getenv("GITLAB_ENDPOINT")
+secret_gitlab = os.getenv("GITLAB_ENDPOINT")
 
 bot = telebot.TeleBot(token, threaded = False)
 bot.remove_webhook()
@@ -54,7 +53,7 @@ except Exception as e:
 
 # --------------Обработка запроса из Gitlab---------------
 
-@app.route('/'+secret, methods = ['POST', 'GET'])
+@app.route('/'+secret_gitlab, methods = ['POST', 'GET'])
 def index():
     if request.headers.get('Content-Type') == 'application/json':
         try:
@@ -86,9 +85,6 @@ def get_client_id(m):
         record_user.create_new_record(TableUser, telegram_id = m.chat.id, gitlab_id = m.text)
     except Exception as e:
         log_error(e)
-
-# -------------Технические функции, не будут использоваться позже--------------
-setup_handlers(Session, bot)
 
 
 

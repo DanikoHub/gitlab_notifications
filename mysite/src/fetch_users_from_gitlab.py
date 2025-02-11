@@ -16,7 +16,7 @@ transport = RequestsHTTPTransport(
 
 client = Client(transport=transport, fetch_schema_from_transport=True)
 
-def fetch_users(user_id):
+def get_user_info(user_id):
     query = gql(f'''
         query User {{
             user(id: "gid://gitlab/User/{user_id}") {{
